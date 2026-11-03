@@ -63,6 +63,8 @@ export class BoardStore {
   flow: FlowLog | null = null;
   /** Runs after each committed write (project folder snapshots, PROJECT-FOLDER-SPEC). */
   onCommit: (() => void) | null = null;
+  /** Runs with committed events and updated board (e.g. workspace label sync). */
+  onEvents: ((events: readonly BoardEvent[], board: Board) => void) | null = null;
   private readonly json: JsonBoardFile;
   /** SQLite storage with its fallback to board.json (SQLITE-STORAGE-SPEC); null keeps board.json only. */
   readonly storage: BoardStorage | null;
@@ -113,6 +115,13 @@ export class BoardStore {
       assertBoardInvariants(board);
       await persistence.save(storageSchema.parse(board));
       this.onCommit?.();
+      if (events.length) {
+        try {
+          this.onEvents?.(events, board);
+        } catch (e) {
+          logFailure("Kanban onEvents handler failed:", e);
+        }
+      }
       if (this.flow && events.length)
         void this.flow.append(events, board).catch((e) =>
           logFailure("Kanban flow log append failed:", e),

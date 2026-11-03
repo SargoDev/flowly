@@ -51,6 +51,7 @@ import { sessionModel } from "./server/agent-model";
 import { startedByUser, turnPick, userTexts } from "./shared/agent-habits";
 import { turnTimeline } from "./server/turn-timeline";
 import { MemoryService, setMemoryEverywhere, memoryOn } from "./server/memory";
+import { WorkspaceLabelSync } from "./server/workspace-labels";
 import { POSTHOG_KEY, TelemetryService } from "./server/telemetry";
 import { FLOWLY_VERSION } from "./shared/version";
 import { logFailure, reportError, reportRpcErrors, setErrorSink } from "./server/error-report";
@@ -195,6 +196,11 @@ export default function contribute(host: PluginServerContext) {
   // Each project's board copy in `<root>/.flowly/` (PROJECT-FOLDER-SPEC).
   const folders = new ProjectFolders(() => store.read(), async () => (await summaries.store.read()).entries);
   store.onCommit = () => folders.schedule();
+  const workspaceLabels = new WorkspaceLabelSync();
+  store.onEvents = (events, board) => workspaceLabels.handleEvents(events, board);
+  void store.read().then((b) => workspaceLabels.reconcile(b.tasks)).catch((e) =>
+    logFailure("Workspace label reconcile failed:", e),
+  );
   // Existing projects get their folder copy on the first start after the upgrade (and failed ones on every start).
   void folders.migrate(store.directory).catch((e) =>
     logFailure("Flowly project folder migration failed:", e),
