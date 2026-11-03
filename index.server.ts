@@ -52,6 +52,7 @@ import { startedByUser, turnPick, userTexts } from "./shared/agent-habits";
 import { turnTimeline } from "./server/turn-timeline";
 import { MemoryService, setMemoryEverywhere, memoryOn } from "./server/memory";
 import { WorkspaceLabelSync } from "./server/workspace-labels";
+import { SearchService } from "./server/search";
 import { POSTHOG_KEY, TelemetryService } from "./server/telemetry";
 import { FLOWLY_VERSION } from "./shared/version";
 import { logFailure, reportError, reportRpcErrors, setErrorSink } from "./server/error-report";
@@ -296,6 +297,17 @@ export default function contribute(host: PluginServerContext) {
     const state = await ideasPrefs.read().catch(() => null);
     return ideasSettingsValues(state?.status === "ready" ? state.values : {}).artifacts;
   };
+  // Search (SEARCH-SPEC): a scan of the board, the latest summaries and project memory.
+  const search = new SearchService({
+    board: () => store.read(),
+    summaries: { path: summaries.store.path, read: async () => (await summaries.store.read()).entries },
+    memory: { path: memory.store.path, read: async () => (await memory.store.read()).entries },
+    memoryOn: (project) => memoryOn(project),
+    ideasOn: () => tools.agents.ideasOn(),
+    artifactsOn: () => tools.agents.artifactsOn(),
+  });
+  tools.agents.search = search;
+  server.handle(rpc.searchQuery, (input) => search.query(input));
   void tools
     .start()
     .catch((e) =>

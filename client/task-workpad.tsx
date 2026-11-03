@@ -10,10 +10,19 @@ import type { AcceptanceItem, CheckState, ConfusionItem, PlanSnapshot, Task, Val
 import { plansOf, validationFreshness, workpadOf } from "../shared/workpad";
 import { useLiveAgents } from "./queries";
 import { Collapse, PagedRows, Section, ShowMore, pageSize, type SectionState } from "./disclosure";
+import { FocusTarget, Marked, limitFor, useFocusTarget, useMark } from "./drawer-focus";
 import { AiMark, IconButton, Label, font, message, radius, relativeTime, space, touch, useTheme, noFocusRing } from "./ui";
 import { t } from "../shared/i18n";
 
 const firstPage = { acceptance: pageSize, checks: pageSize, confusions: pageSize };
+
+/** What needs a look first: failed, out of date, not run, then passed (stable within each). */
+function checkOrder<T extends ValidationItem>(checks: readonly T[], head: Workpad["head"]): T[] {
+  return checks
+    .map((item, index) => ({ item, index, rank: item.state === "fail" ? 0 : item.state === "unrun" ? 2 : validationFreshness(item, head) === "stale" ? 1 : 3 }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((x) => x.item);
+}
 
 /** The next state when a person taps a check's status (WORKPAD-SPEC §6.3). */
 const nextState: Record<CheckState, CheckState> = { unrun: "pass", pass: "fail", fail: "unrun" };
@@ -62,6 +71,21 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
     if (active) setLimit(firstPage);
   }, [active]);
   const more = (group: keyof typeof firstPage) => setLimit((current) => ({ ...current, [group]: current[group] + pageSize }));
+  // A search hit on an item past the first page shows the pages up to it (DRAWER-SPEC "Focus from search").
+  const focusTarget = useFocusTarget();
+  useEffect(() => {
+    if (!focusTarget.startsWith("workpad:") || !workpad) return;
+    const id = focusTarget.slice("workpad:".length);
+    const groups: [keyof typeof firstPage, readonly { id: string }[]][] = [
+      ["acceptance", workpad.acceptance],
+      ["checks", checkOrder(workpad.validation, workpad.head)],
+      ["confusions", workpad.confusions],
+    ];
+    for (const [group, list] of groups) {
+      const at = list.findIndex((item) => item.id === id);
+      if (at >= 0) setLimit((current) => ({ ...current, [group]: limitFor(at, current[group], pageSize) }));
+    }
+  }, [focusTarget, workpad]);
   const storedSha = workpad?.head?.sha || "",
     storedDirty = !!workpad?.head?.dirty;
   useEffect(() => {
@@ -93,11 +117,7 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
     const p = pending.get(v.id);
     return p && p !== "removed" && p.state ? { ...v, state: p.state, by: "human" as const } : v;
   });
-  // What needs a look first: failed, out of date, not run, then passed (stable within each).
-  const shownChecks = checks
-    .map((item, index) => ({ item, index, rank: item.state === "fail" ? 0 : item.state === "unrun" ? 2 : validationFreshness(item, workpad!.head) === "stale" ? 1 : 3 }))
-    .sort((a, b) => a.rank - b.rank || a.index - b.index)
-    .map((x) => x.item);
+  const shownChecks = checkOrder(checks, workpad!.head);
   const confusions = (workpad?.confusions || []).filter((c) => pending.get(c.id) !== "removed");
   const updatedBy = !workpad
     ? ""
@@ -111,6 +131,7 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
   return (
     <Section
       id={task.id}
+      focusId="workpad"
       title={t("Workpad")}
       open={section.open}
       onToggle={section.onToggle}
@@ -134,8 +155,8 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
         {!!acceptance.length && (
           <Group title={t("Acceptance")}>
             <PagedRows items={acceptance} limit={limit.acceptance} render={(item) => (
+              <FocusTarget key={item.id} id={`workpad:${item.id}`}>
               <AcceptanceRow
-                key={item.id}
                 item={item}
                 disabled={disabled || pending.has(item.id)}
                 onToggle={() =>
@@ -144,6 +165,7 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
                   )
                 }
               />
+              </FocusTarget>
             )} />
             {acceptance.length > limit.acceptance && <ShowMore count={Math.min(pageSize, acceptance.length - limit.acceptance)} onPress={() => more("acceptance")} />}
           </Group>
@@ -151,8 +173,8 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
         {!!checks.length && (
           <Group title={t("Checks")}>
             <PagedRows items={shownChecks} limit={limit.checks} render={(item) => (
+              <FocusTarget key={item.id} id={`workpad:${item.id}`}>
               <CheckRow
-                key={item.id}
                 item={item}
                 workpad={workpad!}
                 disabled={disabled || pending.has(item.id)}
@@ -162,6 +184,7 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
                   )
                 }
               />
+              </FocusTarget>
             )} />
             {shownChecks.length > limit.checks && <ShowMore count={Math.min(pageSize, shownChecks.length - limit.checks)} onPress={() => more("checks")} />}
           </Group>
@@ -176,12 +199,13 @@ export const TaskWorkpad = memo(function TaskWorkpad({ task, disabled, active, s
         {!!confusions.length && (
           <Group title={t("Confusions")}>
             <PagedRows items={confusions} limit={limit.confusions} render={(item) => (
+              <FocusTarget key={item.id} id={`workpad:${item.id}`}>
               <ConfusionRow
-                key={item.id}
                 item={item}
                 disabled={disabled || pending.has(item.id)}
                 onResolve={() => void edit(item.id, "removed", () => resolveRpc({ taskId: task.id, itemId: item.id }))}
               />
+              </FocusTarget>
             )} />
             {confusions.length > limit.confusions && <ShowMore count={Math.min(pageSize, confusions.length - limit.confusions)} onPress={() => more("confusions")} />}
           </Group>
@@ -240,6 +264,7 @@ function ByYou({ by }: { by: "agent" | "human" }) {
 }
 
 function AcceptanceRow({ item, disabled, onToggle }: { item: AcceptanceItem; disabled: boolean; onToggle(): void }) {
+  const mark = useMark(`workpad:${item.id}`);
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -252,7 +277,7 @@ function AcceptanceRow({ item, disabled, onToggle }: { item: AcceptanceItem; dis
     >
       <Box checked={item.done} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Label size={font.md}>{item.text}</Label>
+        <Label size={font.md}><Marked text={item.text} terms={mark?.terms} /></Label>
       </View>
       <ByYou by={item.by} />
     </Pressable>
@@ -267,7 +292,12 @@ function stateLabel(item: ValidationItem, stale: boolean) {
 
 function CheckRow({ item, workpad, disabled, onCycle }: { item: ValidationItem; workpad: Workpad; disabled: boolean; onCycle(): void }) {
   const { colors } = useTheme();
+  const mark = useMark(`workpad:${item.id}`);
   const [open, setOpen] = useState(false);
+  // A search hit on this check shows the whole command and its output (DRAWER-SPEC "Focus from search" 7).
+  useEffect(() => {
+    if (mark) setOpen(true);
+  }, [mark]);
   const stale = validationFreshness(item, workpad.head) === "stale";
   const icon =
     item.state === "pass"
@@ -295,12 +325,12 @@ function CheckRow({ item, workpad, disabled, onCycle }: { item: ValidationItem; 
         <Icon name={icon.name} size={16} color={icon.color} />
       </Pressable>
       <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-        <Label size={font.md}>{item.text}</Label>
+        <Label size={font.md}><Marked text={item.text} terms={mark?.terms} /></Label>
         {!!item.command && (
           // One line until the output is shown (or the command is tapped), so long commands don't fill the sidebar.
           <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={noFocusRing}>
             <Label size={font.sm} muted mono selectable lines={open ? undefined : 1}>
-              {item.command}
+              <Marked text={item.command} terms={mark?.terms} />
             </Label>
           </Pressable>
         )}
@@ -327,7 +357,7 @@ function CheckRow({ item, workpad, disabled, onCycle }: { item: ValidationItem; 
             </Pressable>
             <Collapse open={open} id="output">
               <Label size={font.sm} muted mono selectable>
-                {item.evidence}
+                <Marked text={item.evidence} terms={mark?.terms} />
               </Label>
             </Collapse>
           </>
@@ -372,11 +402,12 @@ function PlanList({ plan, title }: { plan: PlanSnapshot; title: string }) {
 
 function ConfusionRow({ item, disabled, onResolve }: { item: ConfusionItem; disabled: boolean; onResolve(): void }) {
   const { colors } = useTheme();
+  const mark = useMark(`workpad:${item.id}`);
   return (
     <View style={{ ...rowStyle(), alignItems: "center" }}>
       <Icon name="CircleHelp" size={14} color={colors.statusWarning} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Label size={font.md}>{item.text}</Label>
+        <Label size={font.md}><Marked text={item.text} terms={mark?.terms} /></Label>
       </View>
       <IconButton icon="Check" size={touch ? 36 : 24} label={t("Mark resolved: {text}", { text: item.text })} disabled={disabled} onPress={onResolve} />
     </View>
