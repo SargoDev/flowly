@@ -1,5 +1,24 @@
 # Implementation progress
 
+## Launch-time Flowly MCP on Paseo 0.14 (card "paseo tools接入") — 2026-11-06
+
+- [PASEO-SESSION-TOOLS-SPEC](PASEO-SESSION-TOOLS-SPEC.md): research of the 0.14 plugin tools (`defineAgentTool`, launch-only `mcpServers`); user chose route B and Paseo `>=0.14.0` (D1, D2).
+- SDK/protocol/client pinned to 0.14.0, manifest `requirements.paseo >=0.14.0`, README/OVERVIEW requirement updated.
+- `server/session-open.ts` (the `agent.session_open` hook) adds `flowly` at launch from `ToolServer.sessionLaunch` when the context records `launch-mcp` and not `mcp` (saved in the config); failures are logged, never thrown.
+- New sessions no longer save `flowly` in their create config (`client/session.ts`, `client/session-create.tsx`); `ToolPreparation` drops `mcp`. `tools.prepare-existing` records `launch-mcp` only once MCP support is confirmed: an idle session is reloaded and kept only if the live snapshot says so; a running one is never interrupted and gets MCP at its next open.
+- Found while implementing: a stored (not loaded) agent's snapshot always reports `supportsMcpServers: false`, so the hook cannot check the provider itself (spec §4.3).
+- Context `methods` gains `launch-mcp` and keeps unknown values; `tools.access-state` shows it as MCP.
+- No onboarding tour or tip change: nothing new to point at in the UI. No telemetry field: no new switch or action.
+
+## Session preview ui-fence notice (card "Recognize ui blocks in flowly's session preview") — 2026-11-05
+
+- ui/app fenced blocks in agent replies render as a compact collapsed notice — "Inline UI — open in Paseo to view it live" — expandable to the still-selectable source, instead of a plain code dump (`isInlineUiFence` in `client/session-markdown.ts`, `UiFenceBlock` in `client/session-content.tsx`). Detection matches genui's rule: the fence's first language word, case-insensitive, so "```ui"/"```app"/"```APP" are caught and "apples" is not. [SESSION-UX-SPEC](SESSION-UX-SPEC.md) §8 updated.
+- Applies everywhere `SessionMarkdown` renders (card session preview, card descriptions, artifact text). Live rendering stays out of scope by design: plugin timeline transformers only run in the host session view (confirmed again on screen — the same block renders live there).
+- One new string in all nine catalogs; fence-detection tests in `client/session-markdown.test.ts`.
+- Verified: `npm run typecheck`, `npm test` (1222 passed; one `server/tool-server.test.ts` timeout appears only under full-suite load and passes in isolation), focused vitest. Real desktop screenshot of the card session preview showing the collapsed notice: [verification/ui-fence-notice-2026-11-05](verification/ui-fence-notice-2026-11-05/).
+- UNRUN: phone preview (SM-S911B not connected via adb this session) and a pixel capture of the expanded state — the web board's lane pager made card targeting nondeterministic for automation; the expand uses the shared `Collapse`/`Chevron` components. Superseded same day: the user confirmed the notice on the phone with the merged build ([verification/ui-fence-notice-2026-11-05/phone-preview-user-confirmed.jpg](verification/ui-fence-notice-2026-11-05/phone-preview-user-confirmed.jpg)).
+- Onboarding: no tour, tip or What's new change — the notice explains itself in context. Telemetry: no new switch or core action, so no heartbeat field.
+
 ## Search (card "搜索功能") — 2026-10-27
 
 - Focus from search: a hit row opens the card at its section and item (Progress, Activity, Workpad, Ideas, Artifacts), widening Activity's last-12 window, Workpad/Artifacts pages and Ideas → Closed to reach it, then a short accent ring; the stored section choices are untouched ([DRAWER-SPEC](DRAWER-SPEC.md#focus-from-search), `client/drawer-focus.tsx`).
