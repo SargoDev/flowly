@@ -629,6 +629,7 @@ export function Row({
   onPress,
   label,
   menu,
+  testID,
 }: {
   title: string;
   detail?: string;
@@ -642,11 +643,14 @@ export function Row({
   label?: string;
   /** Context-menu handlers (right-click / long-press). */
   menu?: object;
+  /** Stable id for automation (UI-UX-SPEC §2, automation names). */
+  testID?: string;
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
+      testID={testID}
       accessibilityLabel={label || title}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}

@@ -4,7 +4,7 @@ import type { ToolServer } from "./tool-server";
 import { logFailure } from "./error-report";
 
 /**
- * The `before("agent.session_open")` hook: a Kanban-managed interactive
+ * The `addHook("agent.open.before")` hook: a Kanban-managed interactive
  * session gets its CLI environment and, at launch only, the `flowly` MCP
  * server (PASEO-SESSION-TOOLS-SPEC §4). Never throws: a failure here would
  * keep the session from opening, so it is logged and the request passes on.

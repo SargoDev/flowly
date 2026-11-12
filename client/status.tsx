@@ -1,10 +1,11 @@
-import { localizedLabels, msg } from "../shared/i18n";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import { legacyStatus, type HistoryStatus, type Status, type Task, type TaskType } from "../shared/model";
+import { legacyStatus, priorityLabels, type HistoryStatus, type Status, type Task, type TaskType } from "../shared/model";
 import { tint, useTheme } from "./ui";
 
 type Colors = PluginTheme["colors"];
+
+export { priorityLabels };
 
 const statusGlyph: Record<Status, { icon: string; color(c: Colors): string }> = {
   backlog: { icon: "CircleDashed", color: (c) => c.foregroundMuted },
@@ -32,12 +33,6 @@ const priorityGlyph: Record<Priority, { icon: string; color(c: Colors): string }
   normal: null,
   low: { icon: "ArrowDown", color: (c) => c.foregroundMuted },
 };
-export const priorityLabels: Record<Priority, string> = localizedLabels({
-  urgent: msg("Urgent"),
-  high: msg("High"),
-  normal: msg("Normal"),
-  low: msg("Low"),
-});
 
 /** The emphasis colour of a priority that deserves attention (Urgent, High), else null. */
 export function priorityAccent(colors: Colors, priority: Priority): string | null {

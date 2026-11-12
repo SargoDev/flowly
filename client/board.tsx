@@ -64,7 +64,7 @@ import { waitingOn } from "../shared/links";
 import { LinkPicker } from "./task-links";
 import { TaskDrawer } from "./drawer";
 import { DeleteTaskDialog } from "./task-delete";
-import { useOverviewQuery, useLiveAgents, useMemoryCountsQuery, useResourcesQuery, useWorkflowInsightsQuery } from "./queries";
+import { useOverviewQuery, useLiveAgents, useGuardrailCountsQuery, useResourcesQuery, useWorkflowInsightsQuery } from "./queries";
 import { projectOpenIdeaCount } from "./overview-query";
 import { useStableCallback, useStableTheme } from "./stable";
 import { isLegacyScope } from "../shared/scope";
@@ -105,7 +105,8 @@ import { IdeasPage } from "./ideas-page";
 import { SearchPage } from "./search-page";
 import { focusOfHit, type DrawerFocus } from "./drawer-focus";
 import { searchSources as allSearchSources, type SearchCard, type SearchHit, type SearchMemoryHit } from "../shared/search";
-import { MemoryPage } from "./memory";
+import { GuardrailsPage } from "./guardrails";
+import { MemoryPage, type MemoryPrefs } from "./memory";
 import { lastViewedProject, pickProject, rememberViewedProject } from "./project-memory";
 import { ProjectTabs } from "./project-tabs";
 import { RemoveProjectDialog } from "./project-remove";
@@ -140,13 +141,15 @@ import { PROJECT_UNAVAILABLE, gone } from "../shared/card-detail";
 import { workpadEnabled } from "../shared/workpad";
 import { cardDisplay } from "../shared/card-display";
 import { parentOf } from "../shared/subagents";
+import { reviewLabel } from "./task-review";
+import { visibleReview } from "../shared/auto-review";
 
 /** One-time tip texts (ONBOARDING-SPEC §5). */
 const tipText: Record<TipId, (compact?: boolean) => string> = {
   "first-card": () => t("Your card moves by itself as the agent works. Open it any time to see its sessions, output and summary."),
   "needs-you": () => t("A card is waiting for you. Reply goes straight to the session."),
   "first-idea": () => t("An agent suggested follow-up work. Good idea starts a card or continues here; Dismiss removes it."),
-  "first-done": () => t("Done cards can be wrapped up: their sessions and workspace are archived. Auto wrap up is in settings."),
+  "first-done": () => t("Done cards can be wrapped up: their sessions and workspace are archived. Unwrap in the card brings them back. Auto wrap up is in Settings → Workflow."),
   "first-artifact": () => t("Cards now collect artifacts: the files and links a task worked from and delivered. Agents add them as they work; you can add your own in the card."),
   "agent-question": () => t("An agent is asking you something. Open the card's session to answer it right there, no need to switch to Paseo."),
   "first-tag": () => t("Agents tag their cards by module and direction. Open a card and tap a tag to filter the board by it, or search #tag."),
@@ -161,7 +164,6 @@ const tipText: Record<TipId, (compact?: boolean) => string> = {
   "ai-language": () => t("AI-written text follows Settings → AI features → AI output language. It starts as your interface language."),
   "first-skill-draft": () => t("Insights drafted a skill from your cards. Open Insights to add it to the project."),
   search: () => t("Find past cards, notes, workpads and deliverables with the search button or S."),
-  "first-memory-candidate": () => t("An agent suggested something to remember. Confirm it in Memory and new sessions on this project will know it; you can edit or delete it any time."),
   "first-workflow-insight": () => t("Workflow insights found repeated work worth keeping. Open Insights to turn a suggestion into a card."),
   "lane-swipe": () => t("Swipe left or right to switch lanes."),
   "card-display": (compact) => compact
@@ -172,7 +174,9 @@ const tipText: Record<TipId, (compact?: boolean) => string> = {
   "sidebar-order": () => t("Arrange an open card your way: reorder its sections and choose which start open in Settings → Cards → Card sidebar."),
   "session-history": () => t("A session's output now starts at the beginning of its current turn. Press Load earlier at the top to read further back."),
   "settings-entry": () => t("Turn features on or off and change settings here."),
-  "first-workpad": () => t("This card has a workpad: the agent's acceptance criteria and checks. The card shows how many checks passed; open it to see which ran on which commit, and tick items yourself."),
+  "auto-review": () => t("Auto review checked this card after the agent delivered; open it to see each check's result."),
+  "first-guardrail": () => t("Flowly learned a check from a card you sent back. Open Guardrails to see what it checks now."),
+  "first-workpad": () => t("This card has a workpad: the agent's acceptance list. The card shows how many items are met; open it to tick items yourself and to see the latest review."),
 };
 
 /** RN-Web forwards React keyboard events on View; React Native's types omit them. */
@@ -330,11 +334,13 @@ function BoardContent(
     [tourClosed, setTourClosed] = useState(false),
     // What's new after an update (WHATS-NEW-SPEC): opened by itself once per release, or from Settings.
     [whatsNewOpen, setWhatsNewOpen] = useState(false),
+    // Edit project opened to suggest auto review checks from past cards (AUTO-REVIEW-SPEC §6.2).
+    [reviewOn, setReviewOn] = useState(false),
     // The user just moved a card into Done/Cancelled (drives the wrap-up tip).
     [movedToFinished, setMovedToFinished] = useState(false),
     [escapeRequest, setEscapeRequest] = useState<{ taskId: string; key: string } | null>(null),
     // Project-level page over the board area: Insights or Ideas (IDEAS-INBOX-SPEC §3.3).
-    [page, setPage] = useState<"insights" | "ideas" | "memory" | "search" | null>(null),
+    [page, setPage] = useState<"insights" | "ideas" | "guardrails" | "memory" | "search" | null>(null),
     // Search page (SEARCH-SPEC §5): the text it opens with and a key that remounts it for a new seed.
     [searchSeed, setSearchSeed] = useState({ text: "", key: 0 }),
     // A search hit for the drawer to land on (DRAWER-SPEC "Focus from search"); any other way of opening a card clears it.
@@ -1054,14 +1060,15 @@ function BoardContent(
     if (target) { setDetailTarget(target); setProject(target.projectId); }
     setTask(id);
   });
-  const togglePage = (next: "insights" | "ideas" | "memory" | "search") => {
+  const togglePage = (next: "insights" | "ideas" | "guardrails" | "memory" | "search") => {
     ignoredLink.current = linkKey;
     // Opening Insights is acting on the skill-draft tip (INSIGHTS-REDESIGN-SPEC §5).
     if (next === "insights" && onboarding.values && !onboarding.values.tipsSeen.includes("first-skill-draft")) void onboarding.markTipSeen("first-skill-draft");
+    // Opening Guardrails is acting on the learned-guideline tip (GUARDRAILS-SPEC §10).
+    if (next === "guardrails" && onboarding.values && !onboarding.values.tipsSeen.includes("first-guardrail")) void onboarding.markTipSeen("first-guardrail");
     setPage((current) => (current === next ? null : next));
   };
   const closePage = useStableCallback(() => setPage(null));
-  const openMemoryPage = useStableCallback(() => { ignoredLink.current = linkKey; setPage("memory"); });
   // SEARCH-SPEC §5.3: a result opens its card, switching project first; the Search page stays open.
   const openSearchCard = useStableCallback((card: SearchCard, hit?: SearchHit) => {
     ignoredLink.current = linkKey;
@@ -1111,10 +1118,16 @@ function BoardContent(
   const projectIdeasData = useProjectIdeasQuery(props.host.id, project?.id || "", page === "ideas" && (!compact || !taskId));
   const projectIdeaList = useMemo(() => projectIdeasData.data?.ideas || [], [projectIdeasData.data]);
   const projectOpenIdeas = useMemo(() => projectOpenIdeaCount(projected, project?.id), [projected?.cards, projected?.tasks, project?.id]);
-  // Project memory candidates waiting for review (PROJECT-MEMORY-SPEC §8.1); the chip hides when the project turned memory off.
-  const memoryCounts = useMemoryCountsQuery(boardActive && !!project && features.memory);
-  const memoryOn = features.memory && !!project && project.memory !== false;
-  const memoryCandidates = memoryOn ? (memoryCounts.data?.[project!.id] ?? 0) : null;
+  // Observing commands and guidelines learned this week (GUARDRAILS-SPEC §7.4); the chip hides when the project turned guardrails off.
+  const guardrailCounts = useGuardrailCountsQuery(boardActive && !!project && features.memory);
+  const guardrailsOn = features.memory && !!project && project.memory !== false;
+  const projectGuardrails = guardrailsOn ? guardrailCounts.data?.[project!.id] : undefined;
+  const guardrailCount = guardrailsOn ? (projectGuardrails ? projectGuardrails.observing + projectGuardrails.added : 0) : null;
+  const memoryCount = guardrailsOn ? (projectGuardrails?.notes ?? 0) : null;
+  // The Memory page's filter, sort and layout (board-view settings, GUARDRAILS-SPEC §7.4).
+  const memoryKind = view.values?.memoryKind ?? "all", memorySort = view.values?.memorySort ?? "newest", memoryLayout = view.values?.memoryLayout ?? "list";
+  const memoryPrefs = useMemo<MemoryPrefs>(() => ({ memoryKind, memorySort, memoryLayout }), [memoryKind, memorySort, memoryLayout]);
+  const saveMemoryPrefs = useStableCallback((patch: Partial<MemoryPrefs>) => void view.update(patch));
   const projectTasks = useMemo(() => (board?.tasks || []).filter((t) => t.projectId === project?.id), [board?.tasks, project?.id]);
   // A session of this project has a live Paseo child agent (SUBAGENTS-SPEC §7).
   const projectHasSubagent = useMemo(() => {
@@ -1194,10 +1207,16 @@ function BoardContent(
     setWhatsNewOpen(false);
     void onboarding.markWhatsNewSeen();
   };
+  // What's new "Turn on for this project": the current project's Edit project, Auto review first and switched on.
+  const turnOnReview = () => {
+    if (!project) return;
+    setReviewOn(true);
+    setProjectForm("edit");
+  };
   const whatsNewAction = (action: NonNullable<WhatsNewItem["action"]>) => {
     closeWhatsNew();
     // Settings and the tour are modals too: open them once this one has gone.
-    afterWhatsNew(() => (action.to === "settings" ? openSettingsAt(action.section) : setWelcomeOpen(true)));
+    afterWhatsNew(() => (action.to === "settings" ? openSettingsAt(action.section) : action.to === "auto-review" ? turnOnReview() : setWelcomeOpen(true)));
   };
   const seeSettingsHint = () => {
     if (settingsHint) void onboarding.markTipSeen("settings-entry");
@@ -1229,8 +1248,9 @@ function BoardContent(
           hasSummary: !task && !!summaries.data?.latest.some((e) => projectTasks.some((x) => x.id === e.taskId)),
           workflowSuggestion: features.insights && workflowTipDue && !!workflowView.data?.findings.some((f) => f.status === "open" && !(f.target === "skill" && f.skill)),
           skillDraft: features.insights && workflowTipDue && !!workflowView.data?.findings.some((f) => f.status === "open" && f.target === "skill" && !!f.skill),
-          memoryCandidate: !task && !!memoryCandidates,
           searchable: !task && projectTasks.filter((x) => !x.archivedAt).length >= 10,
+          reviewShown: !task && projectTasks.some((x) => !!visibleReview(x)),
+          learnedGuideline: !task && !!projectGuardrails?.added,
           laneSwipe: touch && !task && !page && shownStatuses.length > 1 && projectTasks.some((x) => !x.archivedAt),
         },
         blocked: !onboarding.values || welcomeOpen || welcome === "show" || dialogOpen || settingsHint || whatsNewOpen || whatsNewDue === "show",
@@ -1313,6 +1333,7 @@ function BoardContent(
     <LiveTaskCard
       key={t.id}
       {...derivedFor(t)}
+      lane={nameOf(t.status)}
       selected={taskId === t.id}
       display={display}
       flash={flashing.has(t.id)}
@@ -1392,7 +1413,12 @@ function BoardContent(
       ...(ideasOn
         ? [{ id: "ideas", label: t("Ideas"), icon: "Lightbulb", onPress: () => openIn(() => { setIdeaCard(""); setPage("ideas"); }) }]
         : []),
-      ...(features.memory && p.memory !== false ? [{ id: "memory", label: t("Memory"), icon: "BookMarked", onPress: () => openIn(() => setPage("memory")) }] : []),
+      ...(features.memory && p.memory !== false
+        ? [
+            { id: "guardrails", label: t("Guardrails"), icon: "ShieldCheck", onPress: () => openIn(() => setPage("guardrails")) },
+            { id: "memory", label: t("Memory"), icon: "BookMarked", onPress: () => openIn(() => setPage("memory")) },
+          ]
+        : []),
       { kind: "separator", id: "order" },
       { id: "left", label: t("Move left"), icon: "ChevronLeft", disabled: index === 0 || pending, onPress: () => reorderProject(p.id, { direction: "up" }) },
       { id: "right", label: t("Move right"), icon: "ChevronRight", disabled: index === projects.length - 1 || pending, onPress: () => reorderProject(p.id, { direction: "down" }) },
@@ -1439,6 +1465,10 @@ function BoardContent(
         if (!project || !ideasOn) return false;
         setIdeaCard("");
         togglePage("ideas");
+        return true;
+      case "guardrails":
+        if (!project || !features.memory) return false;
+        togglePage("guardrails");
         return true;
       case "memory":
         if (!project || !features.memory) return false;
@@ -1511,6 +1541,7 @@ function BoardContent(
   }, [props.params?.intent, props.params?.at, boardPending]);
   const attentionDetail = (item: AttentionItem) =>
     `${item.project.title} · ${laneName(item.project, item.task.status)} · ${[
+      item.review && item.task.review && reviewLabel(item.task.review),
       item.questions && tn(item.questions, "{n} question", "{n} questions"),
       item.permissions && tn(item.permissions, "{n} approval", "{n} approvals"),
       item.errors && tn(item.errors, "{n} error", "{n} errors"),
@@ -1537,8 +1568,10 @@ function BoardContent(
               color={
                 item.dismissed
                   ? colors.foregroundMuted
-                  : item.permissions || item.questions
+                  : item.permissions || item.questions || item.review === "unavailable"
                     ? colors.statusWarning
+                    : item.review === "failed"
+                      ? colors.statusDanger
                     : item.errors
                       ? colors.statusDanger
                       : colors.statusSuccess
@@ -1675,7 +1708,7 @@ function BoardContent(
         }
         startIdea={startRequest?.taskId === drawer.item.task.id ? startRequest.idea : undefined}
         onAllIdeas={showCardIdeas}
-        onMemoryPage={features.memory ? openMemoryPage : undefined}
+        guardrails={features.memory && drawer.item.project.memory !== false}
         sessionEntry={
           sessionEntry?.taskId === drawer.item.task.id && drawer.active ? sessionEntry : undefined
         }
@@ -1833,7 +1866,10 @@ function BoardContent(
               togglePage("ideas");
             }}
             ideasShortcut={shortcutsOn ? "B" : ""}
-            memoryCandidates={memoryCandidates}
+            guardrailCount={guardrailCount}
+            onGuardrails={() => togglePage("guardrails")}
+            guardrailsShortcut={shortcutsOn ? "G" : ""}
+            memoryCount={memoryCount}
             onMemory={() => togglePage("memory")}
             memoryShortcut={shortcutsOn ? "M" : ""}
             onLane={(status) => {
@@ -1944,6 +1980,7 @@ function BoardContent(
                     onBack={closePage}
                     onCreateFromFinding={createFromFinding}
                     onOpenSettings={openAiSettings}
+                    onOpenGuardrails={guardrailsOn ? () => setPage("guardrails") : undefined}
                   />
                 ) : page === "ideas" && ideasOn && board ? (
                   <IdeasPage
@@ -1972,14 +2009,17 @@ function BoardContent(
                     onOpenMemory={openSearchMemory}
                     onBack={closePage}
                   />
+                ) : page === "guardrails" && board ? (
+                  <GuardrailsPage project={project} tasks={projectTasks} compact={compact} nameOf={nameOf} onOpenTask={openTaskById} onBack={closePage} />
                 ) : page === "memory" && board ? (
-                  <MemoryPage project={project} tasks={projectTasks} compact={compact} nameOf={nameOf} onOpenTask={openTaskById} onBack={closePage} />
+                  <MemoryPage project={project} tasks={projectTasks} compact={compact} prefs={memoryPrefs} nameOf={nameOf} onPrefs={saveMemoryPrefs} onOpenTask={openTaskById} onBack={closePage} />
                 ) : compact ? (
                   <>
                     <View style={{ paddingHorizontal: space[2], paddingTop: space[2] }}>
                       <Row
                         title={nameOf(mobileStatus)}
                         label={t("Choose task status")}
+                        testID="lane-chooser"
                         leading={<StatusIcon status={mobileStatus} size={16} />}
                         trailing={
                           <View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
@@ -2299,6 +2339,7 @@ function BoardContent(
                 <Row
                   key={s}
                   title={nameOf(s)}
+                  testID={`lane-tab-${s}`}
                   leading={<StatusIcon status={s} size={16} />}
                   selected={s === mobileStatus}
                   trailing={
@@ -2480,17 +2521,22 @@ function BoardContent(
         )}
         {projectForm && (
           <ProjectForm
-            key={projectForm}
+            key={`${projectForm}${reviewOn ? ":review" : ""}`}
             project={projectForm === "edit" ? project : undefined}
+            reviewOn={projectForm === "edit" && reviewOn}
             laneCounts={Object.fromEntries(
               shownStatuses.map((s) => [s, tasks.filter((t) => t.status === s && !t.archivedAt).length]),
             )}
             showArchived={archived}
             onShowArchived={setArchived}
-            onClose={() => setProjectForm(null)}
+            onClose={() => {
+              setProjectForm(null);
+              setReviewOn(false);
+            }}
             onSaved={(id, restored) => {
               chooseProject(id);
               setProjectForm(null);
+              setReviewOn(false);
               refresh();
               if (restored) toast.show(tn(restored.restored, "Restored {title} with {n} card.", "Restored {title} with {n} cards.", { title: restored.title }), { variant: "success" });
             }}

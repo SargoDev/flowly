@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { isInlineUiFence, parseSessionMarkdown } from "./session-markdown";
+import { isInlineUiFence, parseSessionInline, parseSessionMarkdown } from "./session-markdown";
 
 test("tables accept short delimiters, alignment and missing outer pipes", () => {
   const [table] = parseSessionMarkdown(
@@ -41,4 +41,26 @@ test("a ui fence parses to the code block the notice keys off, closed or streami
     language: "APP",
     text: "<html>",
   });
+});
+
+test("links accept <angle> destinations with spaces, nested parens and titles", () => {
+  const link = (text: string) => parseSessionInline(text)[0];
+  expect(link("[验收](</Users/a/Search System/docs/D+1.md>)")).toEqual({
+    kind: "link",
+    text: "验收",
+    url: "/Users/a/Search System/docs/D+1.md",
+  });
+  expect(link("[w](https://x.org/a_(b))").url).toBe("https://x.org/a_(b)");
+  expect(link('[t](https://x.org "title")').url).toBe("https://x.org");
+});
+
+test("bare and <angle> URLs become links without trailing punctuation", () => {
+  expect(parseSessionInline("see https://a.io/x_y_z, then (https://b.io/p).")).toEqual([
+    { kind: "text", text: "see " },
+    { kind: "link", text: "https://a.io/x_y_z", url: "https://a.io/x_y_z" },
+    { kind: "text", text: ", then (" },
+    { kind: "link", text: "https://b.io/p", url: "https://b.io/p" },
+    { kind: "text", text: ")." },
+  ]);
+  expect(parseSessionInline("<https://c.io>")[0].url).toBe("https://c.io");
 });

@@ -25,6 +25,7 @@ export function ContentCard({
   after,
   defaultOpen = false,
   openWhen,
+  stripe,
   children,
 }: {
   footer?: ReactNode;
@@ -33,11 +34,13 @@ export function ContentCard({
   defaultOpen?: boolean;
   /** Expands whenever this changes to a value (a search hit on the card); Show less still collapses it. */
   openWhen?: unknown;
+  /** A 3 pt left edge in this color (the Memory page's kind). */
+  stripe?: string;
   children: ReactNode;
 }) {
   const { colors } = useTheme();
   return (
-    <View style={cardFrameStyle(colors)}>
+    <View style={stripe ? [cardFrameStyle(colors), { borderLeftWidth: 3, borderLeftColor: stripe }] : cardFrameStyle(colors)}>
       <View style={{ padding: space[3], paddingBottom: space[3] }}>
         <Clamped background={colors.surface1} footer={footer} defaultOpen={defaultOpen} openWhen={openWhen}>
           {children}
@@ -118,19 +121,22 @@ const CLAMP_HEIGHT = 104;
  * Show more / Show less with an animated height (TASK-SUMMARY-SPEC §7).
  * Content that fits shows in full without a toggle. The toggle sits in the
  * bottom-left corner and `footer` on the right of the same row.
- * `background` is the surface the fade blends into.
+ * `background` is the surface the fade blends into. With `bare`, the footer
+ * row is left out when there is nothing to put in it (the drawer's description).
  */
-function Clamped({
+export function Clamped({
   background,
   footer,
   defaultOpen = false,
   openWhen,
+  bare = false,
   children,
 }: {
   background: string;
   footer?: ReactNode;
   defaultOpen?: boolean;
   openWhen?: unknown;
+  bare?: boolean;
   children: ReactNode;
 }) {
   const [natural, setNatural] = useState(0);
@@ -161,10 +167,12 @@ function Clamped({
         )}
       </Animated.View>
       {/* Footer row: the toggle in the bottom-left corner, `footer` on the right. */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: space[2], minHeight: 24 }}>
-        {overflows && <Toggle open={open} onPress={() => setOpen(!open)} />}
-        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-end" }}>{footer}</View>
-      </View>
+      {(!bare || overflows || footer != null) && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space[2], minHeight: 24 }}>
+          {overflows && <Toggle open={open} onPress={() => setOpen(!open)} />}
+          <View style={{ flex: 1, minWidth: 0, alignItems: "flex-end" }}>{footer}</View>
+        </View>
+      )}
     </View>
   );
 }

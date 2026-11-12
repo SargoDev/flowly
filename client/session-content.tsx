@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { Icon } from "@getpaseo/plugin/client/react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { openExternalUrl } from "@getpaseo/plugin/client";
+import { Icon, copyText, useToast } from "@getpaseo/plugin/client/react-native";
 import {
   isInlineUiFence,
   parseSessionInline,
@@ -10,6 +11,18 @@ import {
 import { Chevron, Collapse } from "./disclosure";
 import { Label, noFocusRing, useTheme } from "./ui";
 import { t } from "../shared/i18n";
+
+/** A local file cannot be opened from a plugin, so pressing its link copies the absolute path. */
+function localPath(url: string) {
+  const file = /^file:\/\//i.test(url);
+  const raw = file ? url.replace(/^file:\/\//i, "") : url;
+  if (!file && !/^(\/|~\/|[A-Za-z]:[\\/])/.test(raw)) return null;
+  try {
+    return file ? decodeURIComponent(raw) : raw;
+  } catch {
+    return raw;
+  }
+}
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
 
@@ -24,6 +37,7 @@ const Inline = memo(function Inline({
   bold?: boolean;
 }) {
   const { colors } = useTheme();
+  const toast = useToast();
   const [linkError, setLinkError] = useState(false);
   const parts = useMemo(() => parseSessionInline(text), [text]);
   return (
@@ -39,8 +53,10 @@ const Inline = memo(function Inline({
         }}
       >
         {parts.map((part, index) => {
+          const path = part.kind === "link" ? localPath(part.url!) : null;
           const link =
-            part.kind === "link" && /^https?:\/\//i.test(part.url || "");
+            part.kind === "link" &&
+            (!!path || /^https?:\/\//i.test(part.url || ""));
           return (
             <Text
               key={index}
@@ -48,9 +64,18 @@ const Inline = memo(function Inline({
               onPress={
                 link
                   ? () => {
-                      void Linking.openURL(part.url!).catch(() =>
-                        setLinkError(true),
-                      );
+                      if (path)
+                        void copyText(path).then(
+                          () =>
+                            toast.show(t("Path copied"), {
+                              variant: "success",
+                            }),
+                          () => setLinkError(true),
+                        );
+                      else
+                        void openExternalUrl(part.url!).catch(() =>
+                          setLinkError(true),
+                        );
                     }
                   : undefined
               }

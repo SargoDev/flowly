@@ -22,14 +22,14 @@ daemon 行为（逐条读代码确认）：
 4. 名字规则 `^[a-z][a-z0-9_]*$`、≤64；和 Paseo 内置工具同名或和别的插件同名时 daemon 抛错。`AgentToolDefinition` 没有 `outputSchema`、`annotations`（`readOnlyHint` 等）。
 5. 插件 `mcpServers` 与 agent **保存的配置**里同名 server 冲突时，daemon 抛错，**这次 session 打开失败**；provider 不支持 MCP（`capabilities.supportsMcpServers` 为 false）时也失败。
 6. 插件启动、停止、reload 会把已打开的 session 标为过期，下一次空闲 prompt 前重新打开（不打断正在跑的回合）；`paseo.agents.ref(id).reload()` 立即生效但会打断回合。
-7. 0.15 把 hook 改名为 `addHook("agent.open.before")`，旧名 `before("agent.session_open")` 保留到 2027-04-30。
+7. 0.15 把 hook 改名为 `addHook("agent.open.before")`，旧名 `before("agent.session_open")` 保留到 2027-04-30。Flowly 已迁移（§5 D3）。
 
 ## 2. Flowly 现在怎么接工具
 
 - 自建 loopback HTTP 服务（`server/tool-server.ts`）：`/mcp`（官方 MCP SDK）+ `/api`（CLI），Bearer 凭据绑定 `agentId + taskId + workspaceId`（`PHASE-02-SPEC` §8）。
 - 从卡片新建 session：客户端把 `mcpServers: { flowly: { type: "http", url, headers: { Authorization } } }` 写进 **agent 创建配置**（`client/session.ts:129`、`client/session-create.tsx:160`），因此 URL 和凭据随 agent 永久保存在 Paseo 的 agent 记录里。
 - 已有 session 经 “Send Kanban work instructions” 加入：只有 CLI（`prepareExisting` → `prepare(..., "cli")`），因为 0.11 不能给已有 session 加 MCP（`PHASE-02-SPEC` §3.2、PROGRESS 第 146 行的原始限制）。
-- `before("agent.session_open")` 现在只给已绑定的 interactive session 续写 `FLOWLY_CONTEXT_FILE` 等环境变量（`index.server.ts:783`）。
+- `addHook("agent.open.before")`（迁移前是 `before("agent.session_open")`）现在只给已绑定的 interactive session 续写 `FLOWLY_CONTEXT_FILE` 等环境变量（`index.server.ts:783`）。
 - 调研时依赖 pin 在 `@getpaseo/plugin` 0.11.2，`requirements.paseo >=0.11.2`；本机宿主已是 0.14.0，npm 上已有 0.15.2。
 
 **结论一：0.14 的插件工具能力 Flowly 完全没用上。**
@@ -104,6 +104,7 @@ hook 抛错或返回冲突会让 session 打不开，这是最高风险：
 
 - **D1** 最低 Paseo 版本升到 0.14.0（不做旧版本特性检测）。
 - **D2** 走路线 B，不接 `defineAgentTool`。
+- **D3**（2026-11-07，迁移卡）最低 Paseo 版本升到 0.15.0，`@getpaseo/plugin`、`protocol`、`client` pin 到 0.15.0；hook 全部改用 `server.addHook`：`agent.session_open`→`agent.open.before`、`agent.turn_started`→`agent.turn.before`、`agent.turn_ended`→`agent.turn.after`、`agent.permission_requested`→`agent.permission.before`。0.14 的用户不再能装新版本。被否决：用 `typeof server.addHook` 特性检测同时保留旧名（旧名 2027-04-30 后失效，还要多一条分支和测试）。回合内容不再读 hook 的 `timeline`（恒为空），一律用 `server/turn-timeline.ts` 读 session 最新一页（`limit: 200`，不是 20：回合工具调用多时 20 条够不到用户消息）。看板事件名 `agent.turn_started`/`agent.turn_ended` 是已存数据，不改。
 
 ## 6. 验收标准
 
@@ -116,5 +117,4 @@ hook 抛错或返回冲突会让 session 打不开，这是最高风险：
 
 ## 7. 后续
 
-- 0.15 hook 改名（`addHook("agent.open.before")`、`agent.turn.after` 等）与 `turn_ended.timeline` 已弃用：单独一张卡迁移，期限 2027-04-30。
 - 重新评估路线 A 的条件：Paseo 向插件暴露 Paseo tools 策略，或插件工具可有自己的命名空间、`outputSchema` 与注解。

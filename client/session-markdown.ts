@@ -169,7 +169,7 @@ export type InlinePart = {
 };
 export function parseSessionInline(text: string): InlinePart[] {
   const pattern =
-    /`([^`\n]+)`|\*\*([^*\n]+)\*\*|__([^_\n]+)__|\[([^\]\n]+)\]\(([^\s)]+)\)|\*([^*\n]+)\*|_([^_\n]+)_/g;
+    /`([^`\n]+)`|\*\*([^*\n]+)\*\*|__([^_\n]+)__|\[([^\]\n]+)\]\((?:<([^>\n]+)>|((?:[^\s()]|\([^\s()]*\))+))(?:\s+"[^"\n]*")?\)|<(https?:\/\/[^\s<>]+)>|(https?:\/\/[^\s<>]*[^\s<>.,;:!?)\]'"*_])|\*([^*\n]+)\*|_([^_\n]+)_/g;
   const parts: InlinePart[] = [];
   let from = 0;
   for (const match of text.matchAll(pattern)) {
@@ -179,8 +179,11 @@ export function parseSessionInline(text: string): InlinePart[] {
     else if (match[2] || match[3])
       parts.push({ kind: "bold", text: match[2] || match[3] });
     else if (match[4])
-      parts.push({ kind: "link", text: match[4], url: match[5] });
-    else parts.push({ kind: "italic", text: match[6] || match[7] });
+      parts.push({ kind: "link", text: match[4], url: match[5] || match[6] });
+    else if (match[7] || match[8]) {
+      const url = match[7] || match[8];
+      parts.push({ kind: "link", text: url, url });
+    } else parts.push({ kind: "italic", text: match[9] || match[10] });
     from = match.index! + match[0].length;
   }
   if (from < text.length) parts.push({ kind: "text", text: text.slice(from) });

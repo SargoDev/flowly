@@ -1,10 +1,10 @@
 import { useCardDetailQuery, useTaskDetail } from "./card-detail-query";
+import { drawerDetailPoll } from "./query-activity";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isNoMoves, nextMovesAction } from "../shared/next-moves";
-import { workpadCheckedAction, workpadEnabled, workpadUpdatedAction } from "../shared/workpad";
+import { workpadCheckedAction, workpadUpdatedAction } from "../shared/workpad";
 import type { PaseoAgent } from "@getpaseo/client";
 import { Pressable, View } from "react-native";
-import { drawerNeedsBoard } from "./query-activity";
 import { Icon, ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
 import {
   usePaseo,
@@ -64,8 +64,8 @@ import { workspaceSession } from "./session";
 import { TaskProgress } from "./task-progress";
 import { TaskUsage } from "./task-usage";
 import { SessionMarkdown } from "./session-content";
+import { Clamped } from "./content-card";
 import { TaskIdeas } from "./task-ideas";
-import { TaskMemorySection } from "./memory";
 import { LinkOrigin, TaskLinks } from "./task-links";
 import { TaskArtifacts } from "./task-artifacts";
 import { TaskWorkpad } from "./task-workpad";
@@ -102,7 +102,7 @@ function TaskDrawerView({
   startRequest,
   startIdea,
   onAllIdeas,
-  onMemoryPage,
+  guardrails = false,
   onFilterTag,
   escapeRequest,
   attention,
@@ -143,8 +143,8 @@ function TaskDrawerView({
   startIdea?: Idea;
   /** Opens the project Ideas page showing only this card (IDEAS-INBOX-SPEC §5). */
   onAllIdeas?(taskId: string): void;
-  /** Opens the project Memory page (PROJECT-MEMORY-SPEC §8.2). */
-  onMemoryPage?(): void;
+  /** Guardrails on (Settings and the project switch): the Workpad shows what this card was sent back for (GUARDRAILS-SPEC §7.1). */
+  guardrails?: boolean;
   /** Adds a tag to the board filter (CARD-TAGS-SPEC §6.3). */
   onFilterTag?(tag: string): void;
   /** Changes on each board Esc shortcut: leave the session preview, else close. */
@@ -169,7 +169,8 @@ function TaskDrawerView({
     update = useRpc(rpc.updateTask),
     adoptIdea = useRpc(rpc.adoptIdea),
     contextRead = useRpc(rpc.taskContext),
-    configure = useRpc(rpc.configureSession);
+    configure = useRpc(rpc.configureSession),
+    unwrap = useRpc(rpc.unwrap);
   const { query: readState, receipts, markRead, markUnread } = useSessionReads();
   const [selected, setSelected] = useState(sessionEntry?.sessionId || ""),
     [highlighted, setHighlighted] = useState(""),
@@ -187,11 +188,11 @@ function TaskDrawerView({
       {},
     );
   // The retained compact root is paused; visible card props still need remote edits/deletions.
-  const pollBoard = drawerNeedsBoard(compact, active, selected);
+  const detailPoll = drawerDetailPoll(active);
   // Only keep the shared poll alive. The root/data readers deliver changed props;
   // fetching flags must not re-render this entire retained detail tree.
   const detailState = useTaskDetail();
-  useCardDetailQuery(hostId, task.id, task.workspaceId, pollBoard, pollBoard ? 3000 : undefined, true);
+  useCardDetailQuery(hostId, task.id, task.workspaceId, !!detailPoll, detailPoll, true);
   const lock = useRef(false);
   const order = useMemo(() => drawerSectionOrder(sectionOrder ? sectionOrder.split(",") : []), [sectionOrder]);
   // Which sections are open: the user's defaults each time the sidebar opens, then their own toggles.
@@ -734,9 +735,7 @@ function TaskDrawerView({
         );
       case "workpad":
         return (
-          workpadEnabled(project) && (
-            <TaskWorkpad task={task} active={active} disabled={!active || !!task.archivedAt || !!project.archivedAt} section={sectionStates.workpad} />
-          )
+          <TaskWorkpad task={task} project={project} guardrails={guardrails} active={active} disabled={!active || !!task.archivedAt || !!project.archivedAt} section={sectionStates.workpad} />
         );
       case "artifacts":
         return (
@@ -830,8 +829,6 @@ function TaskDrawerView({
               section={sectionStates.ideas}
             />
           )}
-          {/* Project memory proposed from this card, right after its ideas (PROJECT-MEMORY-SPEC §8.2). */}
-          {onMemoryPage && <TaskMemorySection task={task} project={project} onOpenPage={onMemoryPage} />}
           </>
         );
       case "links":
@@ -1042,20 +1039,30 @@ function TaskDrawerView({
                   </Label>
                   <Label muted size={font.sm}>
                     {wrapped
-                      ? t(
-                          /(^|; )workspace kept(;|$)/.test(wrapped.note || "")
-                            ? task.status === "done"
-                              ? "Sessions archived {time}. Move the card out of Done to bring them back."
-                              : "Sessions archived {time}. Move the card out of Cancelled to bring them back."
-                            : task.status === "done"
-                              ? "Workspace and sessions archived {time}. Move the card out of Done to bring them back."
-                              : "Workspace and sessions archived {time}. Move the card out of Cancelled to bring them back.",
-                          { time: relativeTime(wrapped.at) },
-                        )
+                      ? /(^|; )workspace kept(;|$)/.test(wrapped.note || "")
+                        ? t("Sessions archived {time}.", { time: relativeTime(wrapped.at) })
+                        : t("Workspace and sessions archived {time}.", { time: relativeTime(wrapped.at) })
                       : t("Wrap up to archive its sessions, worktree and the card.")}
                   </Label>
                 </View>
-                {!wrapped && (
+                {wrapped ? (
+                  <Button
+                    icon="ArchiveRestore"
+                    disabled={!active || sending}
+                    onPress={() =>
+                      void perform(async () => {
+                        const result = await unwrap({ id: task.id });
+                        // The workspace query still holds the archived state; reread it like Refresh details.
+                        refreshAll();
+                        void workspace.refetch();
+                        void scope.refetch();
+                        if (result.failed.length)
+                          throw new Error(t("Not restored: {sessions}", { sessions: result.failed.join("; ") }));
+                      }, t("Unwrapped"))
+                    }
+                  >
+                    {t("Unwrap")}</Button>
+                ) : (
                   <Button icon="Archive" disabled={!active || sending} onPress={() => setShowWrapup(true)}>
                     {t("Wrap up")}</Button>
                 )}
@@ -1063,7 +1070,10 @@ function TaskDrawerView({
             )}
             {onOpenTask && <LinkOrigin taskId={task.id} onOpenTask={onOpenTask} />}
             {!!task.description && (
-              <SessionMarkdown text={task.description} />
+              // Long descriptions (often from an idea) start clamped so Sessions stay in view.
+              <Clamped key={task.id} background={colors.surface0} bare>
+                <SessionMarkdown text={task.description} />
+              </Clamped>
             )}
             {!!detailState.error && <Notice>{message(detailState.error)}</Notice>}
             {!detailState.detail ? <Button quiet onPress={detailState.retry}>{detailState.error ? t("Retry") : t("Loading cards…")}</Button> : order.map((id) => <Fragment key={id}>{section(id)}</Fragment>)}
@@ -1319,6 +1329,8 @@ const activityText: Record<string, string> = localizedLabels({
   progress_reported: msg("Reported progress"),
   idea_edited: msg("Edited the idea"),
   idea_removed: msg("Removed the idea"),
+  review_started: msg("Started the auto review"),
+  review_finished: msg("Finished the auto review"),
   "agent.turn_started": msg("Started a turn"),
   "agent.turn_ended": msg("Finished a turn"),
 });
@@ -1365,7 +1377,7 @@ function ActivityItem({
         </Label>
         {!!event.rule && (
           <View style={{ flexDirection: "row" }}>
-            <Badge>{t("Auto")}</Badge>
+            <Badge>{event.rule === "R1" || event.rule === "R2" ? t("Auto review") : t("Auto")}</Badge>
           </View>
         )}
         {!!event.note && !isNoMoves(event) && (

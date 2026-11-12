@@ -112,7 +112,7 @@ export function LanePager<K extends string>({
         contentContainerStyle={{ height: "100%" }}
       >
         {lanes.map((lane, at) => (
-          <View key={lane} style={{ width, height: "100%" }}>
+          <View key={lane} testID={`lane-page-${lane}`} style={{ width, height: "100%" }}>
             {at === index || (warm && Math.abs(at - index) === 1) ? renderLane(lane) : null}
           </View>
         ))}
