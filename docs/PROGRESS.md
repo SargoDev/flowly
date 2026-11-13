@@ -1,5 +1,23 @@
 # Implementation progress
 
+## Preserve intraword underscores in session/card Markdown — 2026-11-12
+
+- Fixed session previews and card descriptions swallowing intraword underscores, including when copied: `parseSessionInline` checks the outside characters of underscore emphasis, keeps rejected matches literal and resumes scanning one character later. Existing link parsing stays unchanged.
+- Added regression tests for snake_case, repeated underscores, CJK descriptions, file paths, standalone emphasis and a valid emphasis following a rejected match. Updated SESSION-UX-SPEC §8.
+- Onboarding, What's new and telemetry: unchanged (pure bug fix, no new capability, switch or action).
+- PR #101 review follow-up: Unicode punctuation is now an emphasis boundary; `_` remains a word character despite its Unicode punctuation category. Six regression cases cover Chinese colon/full stop, single-sided punctuation, brackets, italic and bold.
+- Checks: see the PR delivery note. Unrun: live plugin reload, desktop/phone rendering and selection/copy.
+
+## Linear issue connector — 2026-11-12
+
+- Added Linear as the seventh read-only provider family. Each connection binds one verified Linear workspace and a personal API key held only by the daemon. GraphQL requests use a fixed API host, constant query operations and variables; no mutations or remote status writes.
+- Issue links and TEAM-123 keys resolve; the picker lists assigned open issues and searches titles. New task's From Linear and Artifacts + reuse the existing connector flows, including scoped agent reads, cached content, content unread fingerprints and revoked-token handling. Jira/Linear bare-key ambiguity requires an explicit service or URL.
+- Ported the earlier local `638a423` implementation onto current main, preserving newer onboarding content. Added workspace-address validation and required verification fields; all GraphQL errors, including partial HTTP-200 responses, fail without overwriting cached content. Request only the latest 20 comments, displayed oldest first.
+- Tests cover recognition, API-key secrecy, fixed read-only endpoint, title variables, metadata/comments/sub-issues, fingerprints, workspace mismatch, partial errors, retry-after, revoked keys, more than 100 comments, new-card inputs, existing-card linking, scoped agent reads and unread changes.
+- Onboarding: existing tour row and `jira-connect` tip updated, no new tip id; nine translation catalogs and English/Chinese README updated. What's new and version stay with the release task. Telemetry unchanged: no new feature switch or core action, and connector type/address is never reported.
+- Checks: see the PR delivery note. Unrun: authenticated live Linear workspace/API validation, plugin installation/reload, desktop/phone UI and the repository's designated independent Claude verification session.
+
+
 ## Session preview Next moves appear without reopening (card "side bar session next move chip修复") — 2026-11-11
 
 - Symptom: with a session open in the card sidebar, a turn that ended with next moves sometimes showed no chips until the session was closed and reopened.
@@ -36,6 +54,13 @@
 - Independent check of eb62c81 (before the two items above): [verification/telemetry-errors-2026-11-10-verify.md](verification/telemetry-errors-2026-11-10-verify.md), pass with notes; its Medium finding (auth failures hidden) is fixed, the timing-dependent retry test now waits within a 200 ms retry.
 - Open, proposed as an idea: Windows linked roots (`symlink` EPERM without Developer Mode).
 - Onboarding and heartbeat fields: none (internal fixes; nothing new to learn or count).
+
+## Test suite: git is hermetic (test-hygiene fix) — 2026-11-10
+
+- Bug (found while verifying PR #95 on this machine): the fixtures' own `git commit` calls inherited the machine's global git config, whose hooks path carries a pre-commit guard — any fixture commit on a branch named `main` was blocked. `server/repos.test.ts` ("matches canonical subdirectories…"), `server/wrapup.test.ts` ("real git: uncommitted and local-only commits are detected") and the six linked-root tests in `server/auto-review.test.ts` failed on a machine with such a hook and passed on machines without one; the suite was machine-dependent.
+- `vitest.config.mjs` sets `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_SYSTEM=/dev/null` through `test.env` (and keeps `testTimeout` 15000 and the `docs/verification/**`, `.claude/**` and `.worktrees/**` excludes), so git subprocesses see no global or system config however vitest is started: `npm test`, `npm run dev`, `npx vitest run <file>` or an IDE runner. It is a plain `.mjs` because `tsconfig.json` only includes `.ts`/`.tsx`; a `vitest.config.ts` importing `vitest/config` adds errors to `tsc --noEmit`. The `npm test` and `npm run dev` scripts are plain `vitest run` / `vitest` again. Tests needing a git identity already pass `-c user.name/-c user.email` per command, so nothing else changes.
+- Checks: `npm run typecheck` exit 0; `npm test` 1354 passed, 0 failed, 6 skipped; with a simulated global hook (`core.hooksPath` pre-commit that blocks commits on `main`, via `GIT_CONFIG_GLOBAL`), `npx vitest run server/repos.test.ts server/wrapup.test.ts server/auto-review.test.ts` passes 46/46, and fails 8 of 46 without `vitest.config.mjs`.
+- Onboarding and telemetry: none (test hygiene, nothing user-visible).
 
 ## Auto review reads every repository of a linked root — 2026-11-07
 
@@ -1205,3 +1230,10 @@ Phase 2 spec: [PHASE-02-SPEC.md](PHASE-02-SPEC.md). Three current-card tools; au
 - 端到端测出并修复：Unwrap 后侧栏仍显示 "Workspace is unavailable or archived."（工作区查询缓存的还是归档状态）；现在 Unwrap 后会像 Refresh details 那样重新读取。
 - [ ] 未跑：真机手机（只在浏览器手机宽度下验证）、独立会话复验。
 - 引导/提示/What's new：本步不加，Unwrap 只在已收尾卡片的侧栏里出现、按钮自明；第二步默认开启 Auto wrap up 时一并更新 `first-done` 提示、导览和 What's new。遥测：不加字段，第二步再定。
+
+## 2026-11-13 turn.after 钩子先过滤再读 turn timeline
+
+- 起因：PostHog 上的 `Flowly turn timeline not read`（1.8.0、1.7.2 各 1 个安装）是 SDK `fetchAgentTimeline` 抛出的普通 Error，最可能是读取时 Flowly 已硬删除了自己的临时会话（`Agent not found`）；而且每个外部会话每回合结束都会拉 200 条 timeline。
+- 改动：外部会话分支改走 `SessionInsightService.turnEnded`（先判断 `isOutsideCandidate` 和开关，再读 timeline）；workflow 钩子改走 `WorkflowInsightsService.turnEnded`（先判断未归档卡片 workspace、workflow insights 开关、非后台 agent；有 `parentAgentId` 的先查标签，summarizer 或已删除则跳过）。NATIVE-SESSION-SPEC §12.2、WORKFLOW-INSIGHTS-SPEC §3.1 已同步。
+- 用户自己在卡片 workspace 里建的子 session（无 summarizer 标签）仍照常采集命令。
+- 测试：`server/session-insights.test.ts`、`server/workflow-insights.test.ts` 各加一条，断言不合格的会话不调用 `timeline.refetch`、合格会话行为不变。
