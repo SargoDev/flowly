@@ -2,7 +2,6 @@ import type { Catalog } from "../i18n";
 
 const catalog: Catalog = {
   "Command": "Comando",
-  "Project default model": "Modelo predeterminado del proyecto",
   "Review model": "Modelo de revisión",
   "{n} s": "{n} s",
   "Not applicable": "No aplica",
@@ -11,6 +10,7 @@ const catalog: Catalog = {
   "Finished the auto review": "Terminó la revisión automática",
   "Auto review": "Revisión automática",
   "Max rework rounds": "Máximo de rondas de corrección",
+  "Waiting for review": "Esperando revisión",
   "Reviewing": "Revisando",
   "Review failed": "Revisión fallida",
   "Review unavailable": "Revisión no disponible",
@@ -1341,7 +1341,7 @@ const catalog: Catalog = {
   "Previous day": "Día anterior",
   "Next day": "Día siguiente",
   "agent {time}": "agente {time}",
-  "Auto review checked this card after the agent delivered; open it to see each check's result.": "Auto review revisó esta tarjeta después de la entrega del agente; ábrela para ver el resultado de cada comprobación.",
+  "Open the card for review results; choose the review model and reasoning in Settings → Models.": "Abre la tarjeta para ver la revisión; elige el modelo y el razonamiento en Ajustes → Modelos.",
   "Deliveries are checked before they reach you, and go back to the agent when they fall short.": "Las entregas se comprueban antes de llegarte y vuelven al agente cuando no cumplen.",
   "Does what you asked": "Hace lo que pediste",
   "Resume": "Reanudar",
@@ -1443,5 +1443,11 @@ const catalog: Catalog = {
   "Memory could not be read": "No se pudo leer la memoria",
   "Find memory in finished cards": "Buscar recuerdos en tarjetas terminadas",
   "Back from session, then close sidebar, then leave a project page": "Volver de la sesión, luego cerrar la barra lateral y luego salir de la página del proyecto",
+  "Previous image": "Imagen anterior",
+  "Next image": "Imagen siguiente",
+  "At most {cardImageLimit} images per card.": "Como máximo {cardImageLimit} imágenes por tarjeta.",
+  "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "Las tarjetas pueden llevar imágenes: pégalas o suéltalas en la descripción en Editar tarea. Los agentes las ven como parte de la descripción.",
+  "Images in descriptions": "Imágenes en descripciones",
+  "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "En la web, pega o suelta imágenes en la descripción de una tarjeta. Los agentes las ven con la descripción; los teléfonos las muestran.",
 };
 export default catalog;

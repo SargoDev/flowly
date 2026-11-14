@@ -2,7 +2,6 @@ import type { Catalog } from "../i18n";
 
 const catalog: Catalog = {
   "Command": "命令",
-  "Project default model": "專案預設模型",
   "Review model": "驗收模型",
   "{n} s": "{n} 秒",
   "Not applicable": "不適用",
@@ -11,6 +10,7 @@ const catalog: Catalog = {
   "Finished the auto review": "完成了自動驗收",
   "Auto review": "自動驗收",
   "Max rework rounds": "最多重工次數",
+  "Waiting for review": "等待驗收",
   "Reviewing": "驗收中",
   "Review failed": "驗收未通過",
   "Review unavailable": "無法驗收",
@@ -1341,7 +1341,7 @@ const catalog: Catalog = {
   "Previous day": "前一天",
   "Next day": "後一天",
   "agent {time}": "agent {time}",
-  "Auto review checked this card after the agent delivered; open it to see each check's result.": "Agent 交付後，Auto review 檢查了這張卡片；打開它查看每項檢查的結果。",
+  "Open the card for review results; choose the review model and reasoning in Settings → Models.": "開啟卡片查看審查結果；在設定 → 模型中選擇審查模型和推理等級。",
   "Deliveries are checked before they reach you, and go back to the agent when they fall short.": "交付在到你手上之前先經過檢查，沒達到要求就退回給 agent。",
   "Does what you asked": "做到了你要求的事",
   "Resume": "恢復",
@@ -1443,5 +1443,11 @@ const catalog: Catalog = {
   "Memory could not be read": "無法讀取記憶",
   "Find memory in finished cards": "從完成的卡片裡找記憶",
   "Back from session, then close sidebar, then leave a project page": "退出工作階段，再關閉側欄，再離開專案頁面",
+  "Previous image": "上一張",
+  "Next image": "下一張",
+  "At most {cardImageLimit} images per card.": "每張卡片最多 {cardImageLimit} 張圖片。",
+  "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "卡片可以附圖片：在「編輯任務」裡把圖片貼上或拖到描述中。智慧體會把它們當作描述的一部分。",
+  "Images in descriptions": "描述中的圖片",
+  "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "在網頁端把圖片貼上或拖到卡片描述裡。智慧體隨描述一起看到它們；手機上可以檢視。",
 };
 export default catalog;

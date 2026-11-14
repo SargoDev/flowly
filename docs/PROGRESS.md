@@ -1,4 +1,55 @@
+## 2026-11-13 PR #103 table wrapping review
+
+- Removed `wordBreak: "break-all"` from web table cells. `overflowWrap: "anywhere"` preserves normal word-boundary wrapping while allowing overlong identifiers and numbers to break within their columns. Contract updated in SESSION-UX-SPEC §8.
+- Verification results are recorded on PR #103. Desktop and physical-phone visual acceptance remain UNRUN.
+- Onboarding and telemetry need no changes for this existing table-rendering refinement.
+
 # Implementation progress
+
+## Review reasoning selection (card "auto review模型reasoning选择") — 2026-11-14
+
+- PR follow-up: hunks separated from shared SDK 0.16/image-removal work onto main’s SDK 0.15. User-authorized GPT Luna independently verified `5042806`: typecheck exit 0, focused 128/128 tests passed, no reproducible defects. See [independent report](verification/review-reasoning-2026-11-14/independent.md).
+
+- Live follow-up: local directory already installed; reload exit 0, enabled/running. Actual desktop (1700×1000) and compact (1000×900) browser UI selected high/xhigh, fresh context and plugin reload retained xhigh. Real Flowly auto reviewer `6e42edbf-9767-44fd-9e4f-d2de56a9bcc0` persisted `thinkingOptionId=xhigh` on codex/gpt-6.1-terra and passed; auto-archived. Disposable native/board resources and directory removed with zero remaining; original review settings restored. Telemetry disabled per dev-install rules. Native windows were not touched; device UI remains UNRUN. Details and screenshots in the report below.
+
+- Settings → Models → Review model now exposes provider-advertised Reasoning options and Model default. `reviewThinking` is optional; model changes clear it. The reviewer reads the model/reasoning pair together and sends `thinkingOptionId` only while that explicit model still supports it; summary fallback gets no override. Corrected the misleading project-default label/spec to match existing summary fallback behavior.
+- Permission assessment: reviewers should have fixed read-only access, with no editable permission picker. Live Codex capability inspection exposes only workspace-write auto/auto-review and full-access, no read-only control. Existing Claude Plan mode and permission denial remain; they do not provide a universal write barrier. Strict enforcement needs provider-native options verification; SDK config.options is already available, so a missing read-only mode alone does not imply missing host support. User clarified this means forbidding reviewer writes, not read-before-write.
+- Existing auto-review tip updated in all catalogs and ONBOARDING-SPEC; no new tip id/tour page. No telemetry field added (no switch or core action). No What's new/version changes.
+- PASS: typecheck exit 0; full tests exit 0, 161 files passed/1 skipped, 1447 tests passed/6 skipped. UNRUN: installed desktop/compact UI, actual review model execution, strict write probe, independent exact-commit verification. Shared working changes left uncommitted and not installed. [Report](verification/review-reasoning-2026-11-14/REPORT.md).
+
+## Auto review waiting state (card "auto review状态显示") — 2026-11-13
+
+- Agent delivery writes `task.reviewWaiting` atomically. Until its review starts, the card strip and drawer Review group show **Waiting for review**, hide the previous result, hold unread Attention signals and disable Rerun. The queue remains serial per project.
+- Review start clears the marker in the same write; a skipped delivery clears it too. Plugin restart turns a still-waiting delivery into Review unavailable with Rerun. The turn-end hook queues the review before settings, model and timeline reads.
+- AUTO-REVIEW-SPEC §3.1, §8.2, §9.1/§9.2 and all nine catalogs updated. Tests cover redelivery, old-result Attention suppression, skip after leaving In review or disabling Auto review, restart/rerun, and waiting behind another card.
+- PR #108 review follow-up: the review computes immediately but rework delivery waits for the delivering turn lifecycle write; failed recording makes the review unavailable. Waiting recovery retains the delivered worktree even after the delivery event is trimmed. Live harness active state now lives under ignored `.test-data`, separate from its committed historical receipt, and completed cleanup permits another setup.
+- Onboarding: no tour change or new tip; this corrects the existing review status at the point users see it. Telemetry: no switch or new core action, so no new field. What's new and version unchanged.
+- Verification: see `docs/verification/auto-review-status-2026-11-13/REPORT.md`. Local plugin reload, real queued-delivery state, desktop/compact card and drawer rendering, restart recovery and the compact Rerun action passed; fixture resources were removed and both registries checked. Independent exact-commit recheck passed on 82849e0: typecheck and 105 focused tests (INDEPENDENT-R2.md); isolated full suite: 1425 passed, 6 skipped. Native windows, phone rendering and a fresh real-model delivering-turn-end/completed verdict remain unrun.
+
+
+## Auto review finds the worktree from the delivered PR (card "自动验收能看到卡片在 git worktree 里的改动", follow-up) — 2026-11-13
+
+- A delivery to In review without `worktree`, from a shared workspace with Auto review on, now looks at the PR/MR links among this call's outputs and the card's existing outputs. A link whose host and repository match a remote of the card's repository gives its head commit through `git ls-remote` (5 s, no prompts); the one worktree, other than the repository's own directory, whose HEAD contains it is reviewed, recorded on the delivery event like an explicit `worktree`, and named in the result's `notice`. None, several, another repository's link or a git/network failure changes nothing (`server/review-worktree.ts` `prWorktree`).
+- Purely local git: works without a GitHub/GitLab connector, and with unpushed commits on top of the PR head.
+- AUTO-REVIEW-SPEC §3.4 and the skill text updated. Onboarding, telemetry, What's new: unchanged (agent-facing, no UI).
+- Checks: see the delivery note. Unrun: a live delivery through the installed plugin.
+
+## Auto review reads the delivered worktree (card "自动验收能看到卡片在 git worktree 里的改动") — 2026-11-13
+
+- `flowly_update_status(in_review)` and the CLI take an optional `worktree` (absolute path, a folder inside it, or the branch checked out in it). The daemon resolves it before the write (`server/review-worktree.ts`) and refuses, with `INVALID_INPUT`, a path that is missing, outside git, another repository, the card's own workspace, or a branch no worktree has checked out. The resolved real path rides on the delivery event; Rerun reuses it.
+- The review resolves it again at start, then runs the commands, reads shape and diff and takes the fingerprint there; `shared` is false and `review.worktree` records the directory. The diff base is the nearer merge-base of the home repository's HEAD and its upstream (or the card's `baseRef`), so main moving on adds nothing. A worktree that is gone makes every check unavailable instead of falling back to the workspace. The review prompt says where the code is.
+- Skill text, tool description, CLI help, AUTO-REVIEW-SPEC §3.4 / §2 / §8.2 and GUARDRAILS-SPEC §6.1 updated.
+- Onboarding: no tour copy or tip (agent-facing delivery parameter, no user-visible UI). Telemetry: no new field (not a switch; deliveries are already counted). What's new: none.
+- Checks: see the delivery note. Unrun: a live auto review through the installed plugin.
+
+## Card description images (issue #99, card "Add image as description") — 2026-11-13
+
+- Spec: `docs/CARD-IMAGES-SPEC.md` (user decisions 2026-11-13: copies in `<plugin data>/card-images/<taskId>/`, phones view and remove only, thumbnails under the description).
+- Daemon: `server/card-images.ts` (`card-images.add/remove/read` RPCs, revision CAS, files written before the board and removed when its write fails, start-up cleanup of unreferenced files, card delete and project Remove move them to `removed/`). The native chip projection drops `images`.
+- Agents: the session context lists the absolute paths right after the description; `flowly_get_task` gives each image its `absolutePath`; the skill text says to view them before starting; the auto review prompt lists them.
+- Client: thumbnail row under the description in the card sidebar (thumbnails only while the sidebar is ready, full image only in the viewer, with previous/next and Remove); web paste/drop/**Add images** on the description of New task and Edit task, a 320 px canvas thumbnail (WebP, else JPEG), uploads after the save. New task's former first-message images became description images.
+- Onboarding: tip `card-images` (web, open card without images) and a More features line. README highlight. Telemetry: no heartbeat field (not a core action).
+- Live check on Tinylink (`docs/verification/card-images/`): web paste/drop/file chooser, save, thumbnails, viewer, remove, context paths, card delete moving images to `removed/`, and a Claude Haiku session reading the images by path all passed. Unrun: Codex (the `codex-aicodewith` provider failed before its turn; plain `codex` is not installed) and the phone (no device reachable over adb, AndroMeld not running).
 
 ## Preserve intraword underscores in session/card Markdown — 2026-11-12
 

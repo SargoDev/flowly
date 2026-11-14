@@ -2,7 +2,6 @@ import type { Catalog } from "../i18n";
 
 const catalog: Catalog = {
   "Command": "Commande",
-  "Project default model": "Modèle par défaut du projet",
   "Review model": "Modèle de revue",
   "{n} s": "{n} s",
   "Not applicable": "Non applicable",
@@ -11,6 +10,7 @@ const catalog: Catalog = {
   "Finished the auto review": "A terminé la revue automatique",
   "Auto review": "Revue automatique",
   "Max rework rounds": "Nombre max. de reprises",
+  "Waiting for review": "En attente de revue",
   "Reviewing": "Revue en cours",
   "Review failed": "Revue échouée",
   "Review unavailable": "Revue indisponible",
@@ -1341,7 +1341,7 @@ const catalog: Catalog = {
   "Previous day": "Jour précédent",
   "Next day": "Jour suivant",
   "agent {time}": "agent {time}",
-  "Auto review checked this card after the agent delivered; open it to see each check's result.": "Auto review a vérifié cette carte après la livraison de l’agent ; ouvrez-la pour voir le résultat de chaque vérification.",
+  "Open the card for review results; choose the review model and reasoning in Settings → Models.": "Ouvrez la carte pour les résultats ; choisissez le modèle et le raisonnement dans Paramètres → Modèles.",
   "Deliveries are checked before they reach you, and go back to the agent when they fall short.": "Les livraisons sont vérifiées avant de vous parvenir et retournent à l’agent quand elles ne suffisent pas.",
   "Does what you asked": "Fait ce que vous avez demandé",
   "Resume": "Reprendre",
@@ -1443,5 +1443,11 @@ const catalog: Catalog = {
   "Memory could not be read": "Impossible de lire la mémoire",
   "Find memory in finished cards": "Trouver des souvenirs dans les cartes terminées",
   "Back from session, then close sidebar, then leave a project page": "Revenir de la session, puis fermer la barre latérale, puis quitter la page du projet",
+  "Previous image": "Image précédente",
+  "Next image": "Image suivante",
+  "At most {cardImageLimit} images per card.": "Au plus {cardImageLimit} images par carte.",
+  "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "Les cartes peuvent contenir des images : collez-les ou déposez-les dans la description depuis Modifier la tâche. Les agents les voient comme une partie de la description.",
+  "Images in descriptions": "Images dans les descriptions",
+  "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "Sur le web, collez ou déposez des images dans la description d’une carte. Les agents les voient avec la description ; les téléphones les affichent.",
 };
 export default catalog;

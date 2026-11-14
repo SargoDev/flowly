@@ -2,7 +2,6 @@ import type { Catalog } from "../i18n";
 
 const catalog: Catalog = {
   "Command": "コマンド",
-  "Project default model": "プロジェクトの既定モデル",
   "Review model": "レビューモデル",
   "{n} s": "{n} 秒",
   "Not applicable": "該当なし",
@@ -11,6 +10,7 @@ const catalog: Catalog = {
   "Finished the auto review": "自動レビューを完了しました",
   "Auto review": "自動レビュー",
   "Max rework rounds": "手直しの最大回数",
+  "Waiting for review": "レビュー待ち",
   "Reviewing": "レビュー中",
   "Review failed": "レビュー不合格",
   "Review unavailable": "レビューできません",
@@ -1341,7 +1341,7 @@ const catalog: Catalog = {
   "Previous day": "前の日",
   "Next day": "次の日",
   "agent {time}": "エージェント {time}",
-  "Auto review checked this card after the agent delivered; open it to see each check's result.": "エージェントの納品後、Auto review がこのカードをチェックしました。開くと各チェックの結果を確認できます。",
+  "Open the card for review results; choose the review model and reasoning in Settings → Models.": "カードでレビュー結果を確認できます。設定 → モデルでレビューモデルと推論レベルを選択できます。",
   "Deliveries are checked before they reach you, and go back to the agent when they fall short.": "納品はあなたに届く前にチェックされ、基準に届かなければエージェントに差し戻されます。",
   "Does what you asked": "依頼どおりに実装されているか",
   "Resume": "再開",
@@ -1443,5 +1443,11 @@ const catalog: Catalog = {
   "Memory could not be read": "メモリを読み込めませんでした",
   "Find memory in finished cards": "完了したカードからメモリを見つける",
   "Back from session, then close sidebar, then leave a project page": "セッションから戻る → サイドバーを閉じる → プロジェクトページを離れる",
+  "Previous image": "前の画像",
+  "Next image": "次の画像",
+  "At most {cardImageLimit} images per card.": "1 枚のカードに追加できる画像は最大 {cardImageLimit} 枚です。",
+  "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "カードに画像を付けられます。「タスクを編集」で説明欄に画像を貼り付けるかドロップしてください。エージェントは説明の一部として画像を見ます。",
+  "Images in descriptions": "説明の画像",
+  "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "Web ではカードの説明欄に画像を貼り付けるかドロップできます。エージェントは説明と一緒に画像を見ます。スマートフォンでは表示できます。",
 };
 export default catalog;

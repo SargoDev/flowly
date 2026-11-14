@@ -2,7 +2,6 @@ import type { Catalog } from "../i18n";
 
 const catalog: Catalog = {
   "Command": "명령",
-  "Project default model": "프로젝트 기본 모델",
   "Review model": "검토 모델",
   "{n} s": "{n}초",
   "Not applicable": "해당 없음",
@@ -11,6 +10,7 @@ const catalog: Catalog = {
   "Finished the auto review": "자동 검토를 마침",
   "Auto review": "자동 검토",
   "Max rework rounds": "최대 재작업 횟수",
+  "Waiting for review": "검토 대기 중",
   "Reviewing": "검토 중",
   "Review failed": "검토 실패",
   "Review unavailable": "검토할 수 없음",
@@ -1341,7 +1341,7 @@ const catalog: Catalog = {
   "Previous day": "이전 날",
   "Next day": "다음 날",
   "agent {time}": "에이전트 {time}",
-  "Auto review checked this card after the agent delivered; open it to see each check's result.": "에이전트가 납품한 뒤 Auto review가 이 카드를 검사했습니다. 열어서 각 검사 결과를 확인하세요.",
+  "Open the card for review results; choose the review model and reasoning in Settings → Models.": "카드를 열어 검토 결과를 확인하고 설정 → 모델에서 검토 모델과 추론 수준을 선택하세요.",
   "Deliveries are checked before they reach you, and go back to the agent when they fall short.": "납품은 당신에게 오기 전에 검사되고, 기준에 못 미치면 에이전트에게 돌아갑니다.",
   "Does what you asked": "요청한 대로 했는지",
   "Resume": "재개",
@@ -1443,5 +1443,11 @@ const catalog: Catalog = {
   "Memory could not be read": "메모리를 읽을 수 없습니다",
   "Find memory in finished cards": "완료된 카드에서 메모리 찾기",
   "Back from session, then close sidebar, then leave a project page": "세션에서 돌아가기, 사이드바 닫기, 프로젝트 페이지 나가기 순",
+  "Previous image": "이전 이미지",
+  "Next image": "다음 이미지",
+  "At most {cardImageLimit} images per card.": "카드당 이미지는 최대 {cardImageLimit}개입니다.",
+  "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "카드에 이미지를 넣을 수 있습니다. 작업 편집에서 설명란에 이미지를 붙여넣거나 끌어다 놓으세요. 에이전트는 설명의 일부로 이미지를 봅니다.",
+  "Images in descriptions": "설명 속 이미지",
+  "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "웹에서 카드 설명에 이미지를 붙여넣거나 끌어다 놓으세요. 에이전트는 설명과 함께 이미지를 보고, 휴대폰에서는 볼 수 있습니다.",
 };
 export default catalog;
