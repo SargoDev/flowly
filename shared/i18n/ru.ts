@@ -568,6 +568,7 @@ const catalog: Catalog = {
   "Closed": "Закрыта",
   "Finished turn": "Ход завершён",
   "Turn ended": "Ход завершён",
+  "Background tasks running": "Идут фоновые задачи",
   "Thought": "Размышлял",
   "{n} tool calls": {"one": "{n} вызов инструмента", "few": "{n} вызова инструментов", "many": "{n} вызовов инструментов", "other": "{n} вызова инструментов"},
   "Prepared session belongs to another workspace or is archived.": "Подготовленная сессия относится к другому рабочему пространству или архивирована.",
@@ -1048,6 +1049,11 @@ const catalog: Catalog = {
   "Everything I'm involved in": "Всё с моим участием",
   "No match in this project's repositories. Try owner/repo#12 or a link.": "В репозиториях этого проекта ничего не найдено. Попробуйте owner/repo#12 или ссылку.",
   "Nothing matches.": "Ничего не найдено.",
+  "{key} does not belong to {project}'s repositories.": "{key} не входит в репозитории проекта {project}.",
+  "The card's workspace will not contain this repository.": "Рабочая область карты не будет содержать этот репозиторий.",
+  "It belongs to {project}'s repositories.": "Он входит в репозитории проекта {project}.",
+  "Add anyway": "Всё равно добавить",
+  "Link anyway": "Всё равно связать",
   "{service} refused the connection's token. Update it in Flowly settings → Connections.": "{service} отклонил токен подключения. Обновите его в настройках Flowly → Подключения.",
   "The service refused the connection's token. Update it in Flowly settings → Connections.": "Сервис отклонил токен подключения. Обновите его в настройках Flowly → Подключения.",
   "{service} is unreachable right now. Try again shortly.": "{service} сейчас недоступен. Повторите попытку чуть позже.",
@@ -1449,5 +1455,6 @@ const catalog: Catalog = {
   "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "В карточки можно добавлять изображения: вставьте или перетащите их в описание в окне «Изменить задачу». Агенты видят их как часть описания.",
   "Images in descriptions": "Изображения в описаниях",
   "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "В веб-версии вставьте или перетащите изображения в описание карточки. Агенты видят их вместе с описанием; на телефоне их можно посмотреть.",
+  "Tap a suggested next step in the session timeline to fill the message box, including on your phone. Nothing is sent.": "Нажмите на предложенный следующий шаг в ленте сессии, чтобы заполнить поле сообщения, в том числе на телефоне. Ничего не отправляется.",
 };
 export default catalog;

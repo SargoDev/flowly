@@ -568,6 +568,7 @@ const catalog: Catalog = {
   "Closed": "已关闭",
   "Finished turn": "回合已结束",
   "Turn ended": "回合已结束",
+  "Background tasks running": "空闲，后台任务运行中",
   "Thought": "思考",
   "{n} tool calls": "{n} 次工具调用",
   "Prepared session belongs to another workspace or is archived.": "预先准备的会话属于其他工作区，或已归档。",
@@ -1048,6 +1049,11 @@ const catalog: Catalog = {
   "Everything I'm involved in": "所有我参与的",
   "No match in this project's repositories. Try owner/repo#12 or a link.": "本项目的仓库中没有匹配项。试试 owner/repo#12 或链接。",
   "Nothing matches.": "没有匹配项。",
+  "{key} does not belong to {project}'s repositories.": "{key} 不属于 {project} 的仓库。",
+  "The card's workspace will not contain this repository.": "卡片工作区不会包含这个仓库。",
+  "It belongs to {project}'s repositories.": "它属于 {project} 的仓库。",
+  "Add anyway": "仍然添加",
+  "Link anyway": "仍然挂接",
   "{service} refused the connection's token. Update it in Flowly settings → Connections.": "{service} 拒绝了连接的令牌。请在 Flowly 设置 → 连接 中更新。",
   "The service refused the connection's token. Update it in Flowly settings → Connections.": "服务拒绝了连接的令牌。请在 Flowly 设置 → 连接 中更新。",
   "{service} is unreachable right now. Try again shortly.": "{service} 暂时无法访问，请稍后再试。",
@@ -1449,5 +1455,6 @@ const catalog: Catalog = {
   "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "卡片可以带图片：在“编辑任务”里把图片粘贴或拖到描述中。智能体会把它们当作描述的一部分。",
   "Images in descriptions": "描述中的图片",
   "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "在网页端把图片粘贴或拖到卡片描述里。智能体随描述一起看到它们；手机上可以查看。",
+  "Tap a suggested next step in the session timeline to fill the message box, including on your phone. Nothing is sent.": "点击 session 时间线中建议的下一步，即可填入输入框，手机上也可以。不会发送消息。",
 };
 export default catalog;

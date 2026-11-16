@@ -94,6 +94,14 @@ test("the reviewer's model: the Review model, else the summary models, never the
   expect(tried).toEqual(["claude/claude-haiku-5-5", "claude/claude-opus-5-5"]);
 });
 
+test("background tasks the delivering session left running go into the review input; none adds nothing (§4.4)", () => {
+  const prompt = reviewPrompt({ ...base, backgroundWork: ["shell: npm test (since 2026-11-11T00:00:00Z)"] });
+  expect(prompt).toContain("## Background tasks still running in the delivering session\n- shell: npm test");
+  expect(prompt).toContain("treat that claim as unverified");
+  expect(reviewPrompt({ ...base, backgroundWork: [] })).not.toContain("Background tasks");
+  expect(reviewPrompt(base)).not.toContain("Background tasks");
+});
+
 test("the card's images are listed by path under the description, nothing without them (CARD-IMAGES-SPEC §5)", () => {
   expect(reviewPrompt(base)).not.toContain("Card images");
   const prompt = reviewPrompt({ ...base, task: { ...base.task, images: ["/d/card-images/t/img-1.png"] } });

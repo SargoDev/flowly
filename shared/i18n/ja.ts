@@ -568,6 +568,7 @@ const catalog: Catalog = {
   "Closed": "終了",
   "Finished turn": "ターン終了",
   "Turn ended": "ターン終了",
+  "Background tasks running": "バックグラウンドタスク実行中",
   "Thought": "思考",
   "{n} tool calls": "ツール呼び出し {n} 件",
   "Prepared session belongs to another workspace or is archived.": "準備済みのセッションは別のワークスペースのもの、またはアーカイブ済みです。",
@@ -1048,6 +1049,11 @@ const catalog: Catalog = {
   "Everything I'm involved in": "自分が関わるすべて",
   "No match in this project's repositories. Try owner/repo#12 or a link.": "このプロジェクトのリポジトリに一致するものはありません。owner/repo#12 かリンクを試してください。",
   "Nothing matches.": "一致するものはありません。",
+  "{key} does not belong to {project}'s repositories.": "{key} は {project} のリポジトリではありません。",
+  "The card's workspace will not contain this repository.": "カードのワークスペースにこのリポジトリは含まれません。",
+  "It belongs to {project}'s repositories.": "{project} のリポジトリに属しています。",
+  "Add anyway": "それでも追加",
+  "Link anyway": "それでも紐付ける",
   "{service} refused the connection's token. Update it in Flowly settings → Connections.": "{service} が接続のトークンを拒否しました。Flowly の設定 → 接続 で更新してください。",
   "The service refused the connection's token. Update it in Flowly settings → Connections.": "サービスが接続のトークンを拒否しました。Flowly の設定 → 接続 で更新してください。",
   "{service} is unreachable right now. Try again shortly.": "{service} に現在接続できません。しばらくしてからお試しください。",
@@ -1449,5 +1455,6 @@ const catalog: Catalog = {
   "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "カードに画像を付けられます。「タスクを編集」で説明欄に画像を貼り付けるかドロップしてください。エージェントは説明の一部として画像を見ます。",
   "Images in descriptions": "説明の画像",
   "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "Web ではカードの説明欄に画像を貼り付けるかドロップできます。エージェントは説明と一緒に画像を見ます。スマートフォンでは表示できます。",
+  "Tap a suggested next step in the session timeline to fill the message box, including on your phone. Nothing is sent.": "セッションのタイムラインで提案された次のステップをタップすると、スマートフォンでもメッセージ欄に入力できます。送信はされません。",
 };
 export default catalog;

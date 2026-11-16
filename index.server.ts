@@ -4,6 +4,7 @@ import type { PaseoApi } from "@getpaseo/client";
 import { BoardStore, columnOrder } from "./server/store";
 import { BoardService, dataDirectory, migrateLegacyPluginData, paseoHome } from "./server/service";
 import { readPaseoVersion } from "./server/paseo-version";
+import { SessionMetadataSync } from "./server/session-metadata";
 import { NativeDirectoryPicker, detectNativePicker, listDirectories } from "./server/directories";
 import * as rpc from "./shared/rpc";
 import { agentHabitsOn, developerSettings, performanceLogOn, performanceSettings, boardViewSettings, ideasSettings, languageSettings, languageSettingsValues, aiLanguageSettings, aiLanguageSettingsValues, deviceLanguageSettings, deviceLanguageValue, modelSettings, onboardingSettings, ideasSettingsValues, statusSettings, statusSettingsValues, wrapupSettings, wrapupSettingsValues, nativeSessionSettings, nativeSessionSettingsValues, featureSettings, featureSettingsValues, telemetrySettings, telemetrySettingsValues } from "./shared/settings";
@@ -32,7 +33,7 @@ import { ArtifactService } from "./server/artifacts";
 import { CardImageService } from "./server/card-images";
 import { WorkpadService } from "./server/workpad";
 import { ConnectorService, migrateTicketDirectory, refKey } from "./server/connectors/service";
-import { projectRepos } from "./server/connectors/repos";
+import { projectRepos, repoVerdict } from "./server/connectors/repos";
 import { linkedCardCounts } from "./shared/connectors";
 import { join } from "node:path";
 import { SessionSettingsService } from "./server/session-settings";
@@ -208,7 +209,11 @@ export default function contribute(host: PluginServerContext) {
   service.connectors = connectors;
   // Each project's board copy in `<root>/.flowly/` (PROJECT-FOLDER-SPEC).
   const folders = new ProjectFolders(() => store.read(), async () => (await summaries.store.read()).entries);
-  store.onCommit = () => folders.schedule();
+  const sessionMetadata = new SessionMetadataSync(Date.now, 2 * 60_000, async () => ({ sessions: await tools.managedSessions() }));
+  store.onCommit = () => {
+    folders.schedule();
+    sessionMetadata.changed();
+  };
   const workspaceLabels = new WorkspaceLabelSync();
   store.onEvents = (events, board) => workspaceLabels.handleEvents(events, board);
   void store.read().then((b) => workspaceLabels.reconcile(b.tasks)).catch((e) =>
@@ -349,12 +354,14 @@ export default function contribute(host: PluginServerContext) {
   });
   server.handle(rpc.readBoardChanged, async (input, { paseo }) => {
     tools.attach(paseo);
+    sessionMetadata.attach(paseo);
     return boardDeltas.read(await store.view(), input);
   });
   const chipDeltas = new BoardDeltas();
   const overviewDeltas = new OverviewDeltas();
   server.handle(rpc.readOverviewChanged, async (input, { paseo }) => {
     tools.attach(paseo);
+    sessionMetadata.attach(paseo);
     return overviewDeltas.read(boardOverview(await store.view()), input);
   });
   server.handle(rpc.readStorageStatus, () => store.storageStatus());
@@ -377,11 +384,13 @@ export default function contribute(host: PluginServerContext) {
     return chipDeltas.read(chipBoard(await store.view()), input);
   });
   server.handle(rpc.managedSessions, () => tools.managedSessions());
-  server.handle(rpc.nativeChips, async () => {
+  server.handle(rpc.nativeChips, async (_, { paseo }) => {
     const [wrap, native] = await Promise.all([wrapupPrefs.read().catch(() => null), nativePrefs.read().catch(() => null)]);
     const values = nativeSessionSettingsValues(native?.status === "ready" ? native.values : {});
+    const managed = await tools.managedSessions();
+    void sessionMetadata.sync(paseo, managed);
     return {
-      managed: await tools.managedSessions(),
+      managed,
       ideas: await tools.agents.ideasOn(),
       autoWrapup: wrapupSettingsValues(wrap?.status === "ready" ? wrap.values : {}).autoWrapup,
       nextMoveTap: values.nextMoveTap,
@@ -545,6 +554,26 @@ export default function contribute(host: PluginServerContext) {
   server.handle(rpc.testConnection, (input) => connectors.test(input));
   server.handle(rpc.deleteConnection, (input) => connectors.remove(input.id));
   server.handle(rpc.searchExternal, (input) => connectors.search(input));
+  // A picked GitHub/GitLab item's repository vs the project's repositories (CONNECTORS-SPEC §4.3).
+  server.handle(rpc.repoCheck, async (input) => {
+    const unknown = { state: "unknown" as const, projectTitle: "", others: [] as { id: string; title: string }[] };
+    const [connection, board] = await Promise.all([connectors.connections.get(input.connectionId).catch(() => null), store.read()]);
+    const project = board.projects.find((p) => p.id === input.projectId && !p.archivedAt);
+    if (!connection || !project) return unknown;
+    const repos = await projectRepos(project.primaryPath, connection.baseUrl).catch(() => []);
+    const state = repoVerdict(input.repo, repos);
+    if (state !== "foreign") return { state, projectTitle: project.title, others: [] };
+    // Other projects are checked concurrently: a cold scan of each root would otherwise delay the warning (§4.3).
+    const members = await Promise.all(
+      board.projects
+        .filter((other) => other.id !== project.id && !other.archivedAt)
+        .map(async (other) => {
+          const list = await projectRepos(other.primaryPath, connection.baseUrl).catch(() => []);
+          return repoVerdict(input.repo, list) === "member" ? { id: other.id, title: other.title } : null;
+        }),
+    );
+    return { state, projectTitle: project.title, others: members.filter((m): m is { id: string; title: string } => !!m).slice(0, 3) };
+  });
   server.handle(rpc.cardExternals, async (input) => {
     const list = (await store.read()).artifacts.filter((a) => a.taskId === input.taskId && a.external);
     const located = await connectors.locate(list);
@@ -812,6 +841,7 @@ export default function contribute(host: PluginServerContext) {
     openKanbanSession(request, tools, store.directory, paseo),
   );
   return () => {
+    sessionMetadata.stop();
     void store.close().catch((e) => logFailure("Flowly storage: close failed:", e));
     workflow.stop();
     telemetry.stop();

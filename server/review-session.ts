@@ -1,3 +1,4 @@
+import { createHidden } from "./background-agent";
 import type { PaseoApi } from "@getpaseo/client";
 import { SUMMARIZER_LABELS, readOnlyConfig, type SummarySettings } from "../shared/summary";
 import { autoReviewLimits } from "../shared/model";
@@ -80,6 +81,12 @@ export function reviewPrompt(input: LlmReviewInput): string {
     `## Delivery note (the agent's own report, context only)\n${cut(input.deliveryNote || "(none)", 3000)}`,
     `## Deliverables\n${input.outputs.length ? input.outputs.map((o) => `- ${o}`).join("\n") : "(none)"}`,
     `## Commands\n${input.commands.length ? input.commands.map((c) => `- ${c}`).join("\n") : "(none)"}`,
+    // §4.4: background tasks the delivering session left running; their results are not part of this delivery.
+    ...(input.backgroundWork?.length
+      ? [
+          `## Background tasks still running in the delivering session\n${input.backgroundWork.map((w) => `- ${w}`).join("\n")}\nThese had not finished when this review started, so their results are not part of the delivery. When the delivery or a check relies on one of them (for example the note says tests pass while that test run is still going), treat that claim as unverified.`,
+        ]
+      : []),
     `## Checks\n${input.checks
       .map((c) =>
         [
@@ -154,14 +161,15 @@ export function llmReviewer(options: {
             logFailure("Flowly review reasoning lookup failed:", error);
           }
         }
-        return paseo.workspaces.ref(input.task.workspaceId).agents.create({
+        return createHidden((hidden) => paseo.workspaces.ref(input.task.workspaceId).agents.create({
+          ...hidden,
           parent: input.parentAgentId,
           config: { ...readOnlyConfig(model), ...(thinkingOptionId ? { thinkingOptionId } : {}) },
           title: `Flowly review · ${input.task.title}`.slice(0, 120),
           labels: { ...SUMMARIZER_LABELS, "flowly-task": input.task.id, "flowly-review": "1" },
           prompt: reviewPrompt(input),
           outputSchema: reviewOutputSchema as unknown as Record<string, unknown>,
-        });
+        }));
       },
       parse: (text) => parseReviewOutput(text, ids),
       remove,

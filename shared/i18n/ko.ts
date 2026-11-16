@@ -568,6 +568,7 @@ const catalog: Catalog = {
   "Closed": "닫힘",
   "Finished turn": "턴 종료",
   "Turn ended": "턴 종료",
+  "Background tasks running": "백그라운드 작업 실행 중",
   "Thought": "생각",
   "{n} tool calls": "도구 호출 {n}회",
   "Prepared session belongs to another workspace or is archived.": "준비된 세션이 다른 워크스페이스에 속하거나 이미 보관되었습니다.",
@@ -1048,6 +1049,11 @@ const catalog: Catalog = {
   "Everything I'm involved in": "내가 관여한 모든 항목",
   "No match in this project's repositories. Try owner/repo#12 or a link.": "이 프로젝트의 저장소에 일치하는 항목이 없습니다. owner/repo#12 또는 링크를 사용해 보세요.",
   "Nothing matches.": "일치하는 항목이 없습니다.",
+  "{key} does not belong to {project}'s repositories.": "{key}은(는) {project}의 저장소가 아닙니다.",
+  "The card's workspace will not contain this repository.": "카드 작업 영역에는 이 저장소가 포함되지 않습니다.",
+  "It belongs to {project}'s repositories.": "{project}의 저장소에 속해 있습니다.",
+  "Add anyway": "그래도 추가",
+  "Link anyway": "그래도 연결",
   "{service} refused the connection's token. Update it in Flowly settings → Connections.": "{service}이(가) 연결 토큰을 거부했습니다. Flowly 설정 → 연결에서 업데이트하세요.",
   "The service refused the connection's token. Update it in Flowly settings → Connections.": "서비스가 연결 토큰을 거부했습니다. Flowly 설정 → 연결에서 업데이트하세요.",
   "{service} is unreachable right now. Try again shortly.": "{service}에 지금 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
@@ -1449,5 +1455,6 @@ const catalog: Catalog = {
   "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "카드에 이미지를 넣을 수 있습니다. 작업 편집에서 설명란에 이미지를 붙여넣거나 끌어다 놓으세요. 에이전트는 설명의 일부로 이미지를 봅니다.",
   "Images in descriptions": "설명 속 이미지",
   "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "웹에서 카드 설명에 이미지를 붙여넣거나 끌어다 놓으세요. 에이전트는 설명과 함께 이미지를 보고, 휴대폰에서는 볼 수 있습니다.",
+  "Tap a suggested next step in the session timeline to fill the message box, including on your phone. Nothing is sent.": "세션 타임라인에서 제안된 다음 단계를 누르면 휴대폰에서도 메시지 입력란이 채워집니다. 메시지는 전송되지 않습니다.",
 };
 export default catalog;

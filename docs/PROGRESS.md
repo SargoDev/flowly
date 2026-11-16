@@ -1253,6 +1253,14 @@ Phase 2 spec: [PHASE-02-SPEC.md](PHASE-02-SPEC.md). Three current-card tools; au
 - 引导：不改导览。`card-display` 提示在紧凑布局改为指向 “Filters → Card display”（桌面仍是 Sort 菜单），新字符串已加入 9 个目录，ONBOARDING-SPEC 提示表同步。What's new / 遥测：无。
 - 润色（同日）：Low/Normal 优先级图标改为 `ArrowDown`/`Minus`（原信号格图标几乎看不见）；分组标题折叠摘要贴行尾右对齐（`SectionHeader`、`Disclosure`）；Ideas/Memory 来源行的状态不再折行。typecheck、npm test（1291 passed, 1 skipped）、make check 均 exit 0；impeccable detect 无发现。真机未验证。证据：`docs/verification/mobile-header-2026-10-31/report.md`。
 
+## 2026-11-05 建卡/挂接时校验 GitHub/GitLab 条目仓库归属
+
+- 背景：2026-11-05 一张 paseo-sync PR 卡误建在 flowly 项目，卡片工作区锁在错误仓库根，session 得去工作区外找代码。按 [CONNECTORS-SPEC §4.3](CONNECTORS-SPEC.md#43-项目仓库范围github--gitlab) 新增建卡/挂接校验：New task 表单与卡片侧栏挂接选择器选中 GitHub/GitLab 条目时，先问 daemon 该仓库（`ExternalSummary.container`）是否属于当前项目的项目仓库；`foreign` 先出非阻断警告（点名条目与项目，说明卡片工作区不包含该仓库，若其他项目包含则点名），确认后才加入/挂接；`unknown`（项目仓库为空、container 为空、RPC 失败）与非 git 族保持沉默。校验在选中时机进行，天然覆盖"我参与的"范围与链接/owner/repo#nr 直查等绕过项目搜索范围的路径。
+- RPC `connectors.repo-check`（输入 projectId、connectionId、repo；输出 state/projectTitle/others≤3）；判定纯函数 `repoVerdict`（大小写不敏感，空即 unknown）在 `server/connectors/repos.ts`；handler 在 `index.server.ts`（复用 5 分钟缓存的 `projectRepos`，others 排除归档项目）。客户端 `client/connectors.tsx`：`useRepoCheck`（失败/空数据静默）与 `ForeignRepoWarning`（Notice + Cancel/确认），`LinkExternal` 与 `client/forms.tsx` 的 `pickExternal`（拆出 `addExternal`）接入。
+- 范围外（有意）：Artifacts"文件或链接"表单粘贴条目链接的自动识别不做校验（非选择器路径），已按 spec 注明。
+- 引导：不改导览、不加 tip（警告本身即提示，无新入口）；What's new 不加（2026-11-13 上游作者要求撤回：2026-11-10 起的规则是 feature/fix/docs 改动不碰 whats-new、只有 release 任务写，且 1.8.0 已于 11-10 发布、条目无人可见——条目与 9 个目录里的字符串已删除）；遥测不加字段（客户端一次性警告，daemon 侧无核心动作可计数）。
+- 已运行：typecheck、npm test（146 files / 1223 passed / 6 skipped）、`npx vitest run server/connectors/repos.test.ts`（3 passed）；桌面 UI 实机走查（2026-11-05，本地 remove+install 交换安装，Playwright + shot-lib）：foreign 建卡警告（含其他项目提示）、Cancel/Add anyway、挂接路径警告/确认/清理、双项目 member 沉默全部 PASS，无卡片或 artifact 残留。未运行：非 git 族沉默（该 daemon 无对应连接，结构性短路）、手机端走查、D2（另一看板 foreign，等价路径覆盖）。[验证记录](verification/repo-check-2026-11-05/report.md)。
+
 ## 2026-11-05 看板卡片可访问名称与稳定 testID（自动化定位）
 
 - 来源卡：看板卡片补齐可访问名称，让 UI 自动化验证可定位。此前卡片可访问名称不含泳道、无 testID，Playwright `getByText` 只命中宿主侧栏同名会话条目，pager/横向滚动落点不定时点卡片经常点空；按 [UI-UX-SPEC §2](UI-UX-SPEC.md#2-board-toolbar-and-secondary-controls) 2026-11-04 automation names 条（本次新增）落契约。
@@ -1282,9 +1290,68 @@ Phase 2 spec: [PHASE-02-SPEC.md](PHASE-02-SPEC.md). Three current-card tools; au
 - [ ] 未跑：真机手机（只在浏览器手机宽度下验证）、独立会话复验。
 - 引导/提示/What's new：本步不加，Unwrap 只在已收尾卡片的侧栏里出现、按钮自明；第二步默认开启 Auto wrap up 时一并更新 `first-done` 提示、导览和 What's new。遥测：不加字段，第二步再定。
 
+## 2026-11-11 Paseo 0.16 接入：后台 agent 与 agent 后台任务
+
+- 来源卡：Paseo 0.16 接入：后台任务。规格：`docs/PASEO-0.16-SPEC.md` §3.1、§3.2（含实测结论与契约）、§4（用户决定先用 beta）、§5；`docs/AUTO-REVIEW-SPEC.md` §4.4、`docs/MULTITASK-SPEC.md` D 节、`docs/BACKGROUND-WORKSPACE-SPEC.md`、`docs/SESSION-UX-SPEC.md`、NATIVE-SESSION-SPEC §12.2、TASK-SUMMARY-SPEC §10、AGENTS.md 两条例外。
+- [x] SDK：`@getpaseo/client`、`plugin`、`protocol` 锁到 0.16.0-beta.1（用户 2026-11-11 决定不等正式版；本机 npm 镜像没有 beta，安装要 `--registry=https://registry.npmjs.org/`）。`requirements.paseo` 仍为 `>=0.15.0`。跟着改：`server/error-report.ts` 的 handle 包装兼容 0.16 的重载，`server/session-open.test.ts` 补 `metadata`。
+- [x] 实测（隔离 0.16.0-beta.1 daemon，`--home /tmp/p16/home`、端口 6790，用户的 `~/.paseo` 未动）：后台 agent 不在默认列表，归档后也不在默认归档列表（只有 `includeBackground` 列得出）；`deleteAgent` 仍有效；不给 workspaceId 时每次新建后台工作区。旧宿主的三种拒绝文案见 spec §3.1（0.15.4 daemon 的那条是对本机 daemon 实测的）。
+- [x] §3.1：`server/background-agent.ts` `createHidden`（方式 B 探测，拒绝即本次启动缓存为不支持并按 0.15 重建）。卡片总结、窗外 insight、记忆复盘、Insights 摘要、workflow insights（含 guardrails 补跑）、自动验收评审都经它创建。`server/summarizer-remove.ts`：后台 agent 用 SDK `archive()`，失败或非后台才硬删除。`server/background-workspace.ts`：已知支持时每项目一个隐藏后台工作区（`hidden` 映射），不归档不恢复。
+- [x] §3.2：`server/wrapup.ts` 预检把 `backgroundWork.count > 0` 的空闲 session 列为阻止项（自动 Wrap up、删除时归档共用）；`server/background-work.ts` + `server/auto-review.ts`/`server/review-session.ts` 把交付 session 仍在跑的后台任务写进评审输入（选“写进输入”而非等待：dev server 之类可能永不结束）；`client/session-state.ts` 新状态 `Background tasks running`，9 个目录已补。
+- [x] `npm run typecheck` 0；`npm test` 155 文件通过 / 1 跳过，1369 通过、6 跳过。新增/改动测试：background-agent、background-work、summarizer-remove、background-workspace（隐藏路径）、wrapup（后台任务阻止）、review-session（提示一节）、session-state（标签）、workflow-insights（固定旧宿主路径）。
+- [x] 端到端（隔离 0.16 daemon，本地目录安装的插件，fixture 项目 `p16 e2e`，Claude haiku session 在后台跑 `sleep 600`）：交付触发的总结和评审 session 都是 `background=true`，运行中与结束后都不在默认列表和默认归档里；评审提示里有后台任务一节，评审通过；总结正常生成；session 快照 `backgroundWork.count=1`；卡片进 Done 后 `wrapup-check` 给出阻止项、`tasks.wrapup` 被拒；`backgroundWork.stop` 后阻止项消失。Insights 摘要与记忆复盘跑在隐藏后台工作区里，侧栏没有出现 `Flowly background`，结果正常。
+- [ ] 未跑：Codex 的后台任务（只用 Claude 验证）；workflow insights 在 0.16 上的端到端（与摘要同路径，仅单测）；0.16 的 UI 截图（状态标签只经快照和单测验证）；独立会话复验；装到用户真实 0.15.4 daemon 上的回归（靠拒绝文案实测与单测）。
+- [x] 2026-11-12 SDK 升到 0.16.0-beta.2（用户本机宿主已是 beta.2）；`server/session-open.test.ts` 补必填的 `background: false`。
+- [x] 真实 daemon 端到端（用户本机 0.16.0-beta.2，本地目录安装的插件，临时项目 `p16 live e2e`，Claude haiku session 在后台跑 `sleep 900`；证据 `docs/verification/paseo16-live-2026-11-12/report.md`）：总结、评审、记忆复盘、Insights 摘要、workflow insights 都是 `background=true`，轮询期间默认列表里一次都没出现，结束后全部归档；评审提示含后台任务一节并通过；抽屉里 session 显示 `Background tasks running`（card.png）；进 Done 后自动 Wrap up 未执行，`wrapup-check` 阻止、`tasks.wrapup` 被拒，`backgroundWork.stop` 后阻止项清空；`Flowly background` 工作区是 `background=true`，默认工作区列表里没有。测试项目、session、工作区、临时目录和 `removed/` 备份已清理并核对。
+- [x] 实测发现的 bug：记忆复盘 helper 结束后又被当成窗外 session 跑了一次 insight（`Flowly insights · Flowly memory review · …`）。原因：宿主 `describeHookAgent` 不带 `labels`，`isSummarizer` 在 hook 路径上永远为假。修正：`isOutsideCandidate` 同时排除 `background=true`；`server/session-insights.test.ts` 加用例（改前失败、改后通过）。0.15 宿主的 hook 是否带 labels 未核对。
+- [x] PR #100 CodeRabbit：插件启动后支持情况未知，第一次项目级运行走了可见的 `Flowly background`，结束后归档进用户的归档（step2 实测里就出现过，当时误判为检查写法问题）。修正：支持未知时只要任一项目记有隐藏工作区就走隐藏路径，宿主拒绝再回到可见流程；`server/background-workspace.test.ts` 加两例（改前失败、改后通过）；`live2.mjs` 在同一 daemon 上复验（新项目摘要、重载插件后再摘要，全程无可见工作区），已清理。本机第一次运行（没有任何记录）仍走可见流程。验证脚本按评审收窄了 helper 范围、列表失败不再当成“没有”。
+- 取舍：后台 agent 归档后记录仍留在宿主磁盘（不显示、不占用户归档），不再硬删除。
+- 引导/What's new/遥测：不加。临时 session 变隐藏属于“不再打扰”，新状态标签自明；不加心跳字段（`paseo_version` 由 composer 卡片做）。
 ## 2026-11-13 turn.after 钩子先过滤再读 turn timeline
 
 - 起因：PostHog 上的 `Flowly turn timeline not read`（1.8.0、1.7.2 各 1 个安装）是 SDK `fetchAgentTimeline` 抛出的普通 Error，最可能是读取时 Flowly 已硬删除了自己的临时会话（`Agent not found`）；而且每个外部会话每回合结束都会拉 200 条 timeline。
 - 改动：外部会话分支改走 `SessionInsightService.turnEnded`（先判断 `isOutsideCandidate` 和开关，再读 timeline）；workflow 钩子改走 `WorkflowInsightsService.turnEnded`（先判断未归档卡片 workspace、workflow insights 开关、非后台 agent；有 `parentAgentId` 的先查标签，summarizer 或已删除则跳过）。NATIVE-SESSION-SPEC §12.2、WORKFLOW-INSIGHTS-SPEC §3.1 已同步。
 - 用户自己在卡片 workspace 里建的子 session（无 summarizer 标签）仍照常采集命令。
 - 测试：`server/session-insights.test.ts`、`server/workflow-insights.test.ts` 各加一条，断言不合格的会话不调用 `timeline.refetch`、合格会话行为不变。
+
+
+## 2026-11-16 Agent 工具输出精简（issue #109）
+
+- 先更新 [输出契约](AGENT-OUTPUT-SPEC.md)：MCP/CLI 默认 compact，`responseDetail: "full"` / `--full` 保留完整输出与 Jira `ticket` 兼容。输出选项不参与写入回执摘要，idea 的正文 `detail` 保留。
+- 写后只生成续写信息，不再构造完整上下文、session 列表、记忆或外部摘要；Workpad 返回带 ID 的规范化验收清单。CLI 可用 `--save-request` 保存写后的请求，拒绝、空续写和本地保存失败保留重试快照，并区分已经提交的写入。
+- get_task 去掉管理字段、false artifact 标记；先过滤生命周期/next-move 事件，再取最近 10 条有效活动。保留范围、护栏、图片、有效操作 ID、未读语义。
+- PASS：实现者聚焦回归 178 通过/5 跳过；源码提交 `2c96ec6dd7b2c8e8bc411e67ef3fa1cfb91cdd12` 的 typecheck exit 0，全量测试 exit 0，1442 通过/6 跳过。用户指定的 GPT Luna 独立验收同样通过，无阻断审阅项，见 [独立报告](verification/issue-109-luna.md)。原指定 Haiku 因账户额度限制在启动时失败，未执行检查；用户授权改用 Luna。
+- 固定 fixture 的 JSON 字符数：读取 29013 → 4537（-84.4%），写入 28244 → 913（-96.8%）。不等同模型 token 或耗时收益。旧完整输出回归改为显式请求 full；新增默认 compact 的真实 loopback MCP/HTTP/CLI 串联与恢复测试，未弱化原有业务断言。
+- 首轮失败保留说明：输出参数最初与 idea.detail 重名，已改为 responseDetail；两个故障注入测试起初挂错 store 方法；备份测试文件曾被 Vitest 误发现。修正后重跑完整聚焦集合通过。独立 worktree 初始未带自己的索引，后仅重建索引，工作文件不变且与验收 commit 一致。
+- UNRUN：安装/重载用户正在使用的插件、桌面/手机 UI；本次为工具输出契约，不新增 UI 能力、开关或计数动作，无需 onboarding/tip/telemetry/What's new 改动。共享工作区的其他改动不纳入提交。
+
+
+### Issue #109 审阅修正
+
+- CodeRabbit 指出两个有效问题：workpad 版本未配套清单会让缓存清单覆盖人的勾选；写后读取若包含另一个人的版本，会给尚未读到该改动的 agent 签发新请求。用户于 2026-11-16 明确同意后一项低概率窗口的最小保护。
+- Workpad 现在总是将 revision 与规范化清单一起返回；compact 续写只为回执提交版本签发，后置版本不同则保留成功回执、返回空续写并要求重读。没有锁、自动重试或存储迁移。
+- 最终源码提交 `da9b9a5b0da6fa599656edf9dab348da957f8697`：实现者 typecheck 通过，整组聚焦回归 182 通过/5 跳过；独立 GPT Luna typecheck exit 0、全量 exit 0，1445 通过/6 跳过，见 [复验报告](verification/issue-109-luna-rework.md)。Paseo 验证 session 为 `e77a983b-ae48-4778-8a94-fc8a6d32d211`（父会话创建回执）；报告自身的 CODEX_SESSION_ID 另列。
+- 补充失败记录：新增版本冲突测试起初重复用了已提交 request，正确得到 REQUEST_REUSED；改用未提交的旧版本 request 后，REVISION_CONFLICT 断言通过，未弱化断言。
+- 最终 fixture 字符数：读取 29013 → 4537（-84.4%），写入 28244 → 982（-96.5%）。原始报告保留其旧源码与测量，最终结论以本次复验为准。
+
+
+## 2026-11-16 Paseo 0.16.0 正式版回归（PR #100）
+
+- 合并 main 并解决 review reasoning 与后台创建的冲突；client/plugin/protocol 固定 0.16.0，插件版本与最低宿主不变。全部声明对比：后台 API 无签名变更；turn.after.timeline 删除，现有实现已不依赖；新增 wholeTurns 等本卡不扩展。
+- 源码提交 73ce52d：实现者和用户授权的独立 Luna 都通过 typecheck/full tests，161 文件通过/1 跳过、1465 测试通过/6 跳过，exit 0。指定 Haiku 因账户额度失败，没有执行检查。
+- 隔离正式版 daemon 实测六类 helper 隐藏并归档；Codex sleep 后台任务阻止 Wrap up，停止后清空阻止；评审输入列出任务，评审通过；summary/digest/outside insight/native row 和 Codex workflow 结果正常。首轮 workflow 默认 Claude 额度失败，隔离环境改模型后重跑成功。测试脚本误读的 RPC/list 形状已修正，未改产品行为。
+- 清理后插件和 native registry 的 fixture 项目/卡片/工作区/agent 全零，隔离 daemon 与独立测试会话已停止/删除；临时数据清除。报告与独立原始报告见 verification/paseo16-ga-2026-11-16/。
+- UNRUN：本轮真实 0.15 宿主、桌面/手机 UI；兼容回退测试通过，历史 beta.2 UI 证据保留。本轮无新字符串/开关，不加 onboarding/tip/遥测/What's new。
+
+
+## Composer: retain timeline and mobile fill — 2026-11-16
+
+- User prefers the original Progress / Next moves timeline. Removed Stage Select and Next moves Combobox registration and implementation; Task pill and Ideas chip stay. This supersedes the 2026-11-12 controls requirement; session metadata and telemetry stay available to the other 0.16 integrations. This commit contains only the card-session mirror; workspace/background metadata and push changes stay with their own card.
+- Timeline message suggestions keep `applyMessageMove` → `client.composers({agentId})` → `setPrompt` + `focus` on 0.16, including phones, with blank-line append, Copy setting and copy fallback. Nothing is sent. The 0.15 web-composer exception stays.
+- Onboarding: replaced the controls tip with `session-composer-fill`, gated by composer access and a card session, translated in all nine catalogs; welcome tour unchanged because it already demonstrates timeline suggestions. README and OVERVIEW aligned. No new telemetry field or switch; What's new unchanged.
+- Checks and limitations: see [verification](verification/composer-timeline-2026-11-16.md). Android unavailable: AndroMeld socket absent and `adb devices -l` empty. Earlier web evidence describes the superseded controls and is not proof of this UI.
+
+- Shipping scope: common host feature detection and heartbeat `paseo_version` with its whitelist, tests and privacy notice. SDK 0.16.0 is inherited from main (#100); the minimum stays 0.15.0. Exact-commit verification is recorded separately.
+
+- Isolated shipping tree on main `fb9e744`: `npm run typecheck` exit 0; `NODE_ENV=test FLOWLY_TELEMETRY=0 npm test` exit 0, 164 files / 1486 tests passed, 1 file / 6 tests skipped. Original shared-tree results above are historical.
+
+- PR #114 CodeRabbit: reproduced two ordinary error-recovery defects (7 metadata tests passed / 2 new tests failed on the original source). Failed list reads now retain the full reconciliation obligation; failed metadata writes no longer enter the completion cache. Retries use the next existing sync round, with no immediate loop. Typecheck exit 0, metadata suite 9/9 passed, full suite 1488 passed / 6 skipped (164 files passed / 1 skipped). Three low-probability concurrency suggestions are pending the user's Scope control decision and are not implemented.

@@ -568,6 +568,7 @@ const catalog: Catalog = {
   "Closed": "Cerrada",
   "Finished turn": "Turno terminado",
   "Turn ended": "Turno terminado",
+  "Background tasks running": "Tareas en segundo plano activas",
   "Thought": "Pensó",
   "{n} tool calls": {"one": "{n} llamada a herramienta", "other": "{n} llamadas a herramientas"},
   "Prepared session belongs to another workspace or is archived.": "La sesión preparada pertenece a otro espacio de trabajo o está archivada.",
@@ -1048,6 +1049,11 @@ const catalog: Catalog = {
   "Everything I'm involved in": "Todo en lo que participo",
   "No match in this project's repositories. Try owner/repo#12 or a link.": "No hay coincidencias en los repositorios de este proyecto. Prueba owner/repo#12 o un enlace.",
   "Nothing matches.": "No hay coincidencias.",
+  "{key} does not belong to {project}'s repositories.": "{key} no pertenece a los repositorios de {project}.",
+  "The card's workspace will not contain this repository.": "El espacio de trabajo de la tarjeta no contendrá este repositorio.",
+  "It belongs to {project}'s repositories.": "Pertenece a los repositorios de {project}.",
+  "Add anyway": "Añadir de todos modos",
+  "Link anyway": "Vincular de todos modos",
   "{service} refused the connection's token. Update it in Flowly settings → Connections.": "{service} rechazó el token de la conexión. Actualízalo en Ajustes de Flowly → Conexiones.",
   "The service refused the connection's token. Update it in Flowly settings → Connections.": "El servicio rechazó el token de la conexión. Actualízalo en Ajustes de Flowly → Conexiones.",
   "{service} is unreachable right now. Try again shortly.": "{service} no está disponible ahora. Inténtalo en un momento.",
@@ -1449,5 +1455,6 @@ const catalog: Catalog = {
   "Cards can hold images: paste or drop them into the description in Edit task. Agents see them as part of the description.": "Las tarjetas pueden llevar imágenes: pégalas o suéltalas en la descripción en Editar tarea. Los agentes las ven como parte de la descripción.",
   "Images in descriptions": "Imágenes en descripciones",
   "Paste or drop images into a card's description on the web. Agents see them with the description; phones show them.": "En la web, pega o suelta imágenes en la descripción de una tarjeta. Los agentes las ven con la descripción; los teléfonos las muestran.",
+  "Tap a suggested next step in the session timeline to fill the message box, including on your phone. Nothing is sent.": "Toca un siguiente paso sugerido en la cronología de la sesión para rellenar el cuadro de mensaje, también en el móvil. No se envía nada.",
 };
 export default catalog;
