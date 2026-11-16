@@ -1355,3 +1355,18 @@ Phase 2 spec: [PHASE-02-SPEC.md](PHASE-02-SPEC.md). Three current-card tools; au
 - Isolated shipping tree on main `fb9e744`: `npm run typecheck` exit 0; `NODE_ENV=test FLOWLY_TELEMETRY=0 npm test` exit 0, 164 files / 1486 tests passed, 1 file / 6 tests skipped. Original shared-tree results above are historical.
 
 - PR #114 CodeRabbit: reproduced two ordinary error-recovery defects (7 metadata tests passed / 2 new tests failed on the original source). Failed list reads now retain the full reconciliation obligation; failed metadata writes no longer enter the completion cache. Retries use the next existing sync round, with no immediate loop. Typecheck exit 0, metadata suite 9/9 passed, full suite 1488 passed / 6 skipped (164 files passed / 1 skipped). Three low-probability concurrency suggestions are pending the user's Scope control decision and are not implemented.
+
+
+## Paseo 0.16 配套正式版验收 — 2026-11-16
+
+- §3.5 看板变更推送、§3.6 workspace/session/background metadata；§3.7 按用户决定暂缓。SDK 沿用主分支的 0.16.0 正式版，最低宿主仍为 0.15。
+- 手机目标静止读取 51→1（约98%减少），变更 React 提交约306±40ms，订阅关闭/拒绝后回退并自动恢复；直达Flowly补测冷启动，三有效配对首次提交中位4294.5→4454.5ms（+3.7%），原零退化门槛未通过，用户查看后明确接受5%内波动，Luna按配对中位差门槛复核通过，PR#115等待保护检查。
+- 真正创建、改绑、删卡、Wrap up/unwrap、镜像纠正已验证；修复prepare先于agent创建的缓存跳过、缓存正确后不再核对的问题。保留前置任务普通失败重试实现及回归，避免旧共享树覆盖。
+- 真实0.15.4 daemon回退通过，旧客户端UI未跑；精确ba4aa41候选独立GPT6Luna typecheck及48项聚焦测试通过，旧宿主复验通过；实现者全量1496通过/6跳过。证据：[总报告](verification/paseo016-ga-2026-11-16/REPORT.md)、[手机](verification/paseo016-ga-2026-11-16/PHONE.md)、[旧宿主](verification/paseo016-ga-2026-11-16/OLD-HOST.md)。
+- 无新界面、设置或heartbeat字段，不增加tour/tip/What’s new；README与OVERVIEW说明默认本机ID镜像与订阅行为。
+
+- CodeRabbit后续：缺失归档workspace有界复查、用户批准的忙时补轮、失败不自旋均有回归；定时断言覆盖5秒回退与60秒校对。旧实现3回归失败，修复后5文件52项与typecheck通过。见 verification/paseo016-ga-2026-11-16/CODERABBIT.md。
+
+- 最终363073c覆盖绑定读取窗口，确定性回归先红后绿；typecheck与全量1501通过/6skip，独立Luna 53聚焦通过并放行。客户端产品源码未改，既有手机与旧宿主证据不冒充新取样。
+
+- 删除清理补轮d38c8ab：在drain前重新dirty，冷/热删除回归先红后绿；55聚焦、typecheck、全量1503/6skip与独立Luna通过。旧报告时序已独立注释；按用户决定继续等CodeRabbit额度。
